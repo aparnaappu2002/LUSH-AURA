@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   FaHome, FaBox, FaUsers, FaListUl, FaGift, FaTicketAlt,
-  FaUserFriends, FaStar, FaImage, FaBars, FaTimes
+  FaUserFriends, FaStar, FaImage, FaBars, FaTimes,
+  FaShoppingCart
 } from 'react-icons/fa';
 
 const SidebarItem = ({ icon, text, to, isOpen }) => (
@@ -38,7 +39,7 @@ const Sidebar = () => {
         <SidebarItem icon={<FaListUl className="w-5 h-5" />} text="Categories" to="/categorymanagement" isOpen={isOpen} />
         <SidebarItem icon={<FaGift className="w-5 h-5" />} text="Offers" to="/offers" isOpen={isOpen} />
         <SidebarItem icon={<FaTicketAlt className="w-5 h-5" />} text="Coupons" to="/coupons" isOpen={isOpen} />
-        <SidebarItem icon={<FaUserFriends className="w-5 h-5" />} text="Customers" to="/customers" isOpen={isOpen} />
+        <SidebarItem icon={<FaShoppingCart className="w-5 h-5" />} text="Orders" to="/orders" isOpen={isOpen} />
         <SidebarItem icon={<FaStar className="w-5 h-5" />} text="Reviews" to="/reviews" isOpen={isOpen} />
         <SidebarItem icon={<FaImage className="w-5 h-5" />} text="Banners" to="/banners" isOpen={isOpen} />
       </nav>

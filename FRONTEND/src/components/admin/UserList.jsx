@@ -39,7 +39,7 @@ const UsersList = () => {
   const [change, setChange] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
-  const usersPerPage = 10;
+  const usersPerPage = 9;
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -143,7 +143,7 @@ const UsersList = () => {
           <div className="bg-white rounded-lg border border-gray-200 shadow-lg overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-black text-white">
+                <thead className="bg-pink-500 text-white">
                   <tr>
                     <th className="px-4 sm:px-6 py-3 text-left text-xs sm:text-sm font-medium uppercase tracking-wider">
                       User
@@ -235,8 +235,8 @@ const UsersList = () => {
                     disabled={currentPage === 1}
                     className={`px-3 py-1 rounded-md text-sm font-medium
                       ${currentPage === 1
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-black text-white hover:bg-gray-800'
+                        ? 'bg-pink-300 text-black-400 cursor-not-allowed'
+                        : 'bg-pink-500 text-white hover:bg-pink-800'
                       } transition-colors`}
                   >
                     Previous
@@ -246,8 +246,8 @@ const UsersList = () => {
                     disabled={currentPage === totalPages}
                     className={`px-3 py-1 rounded-md text-sm font-medium
                       ${currentPage === totalPages
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-black text-white hover:bg-gray-800'
+                        ? 'bg-pink-300 text-black-400 cursor-not-allowed'
+                        : 'bg-pink-500 text-white hover:bg-pink-800'
                       } transition-colors`}
                   >
                     Next

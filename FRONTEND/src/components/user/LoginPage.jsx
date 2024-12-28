@@ -17,6 +17,8 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+
 
   const validateForm = () => {
     const validationErrors = {};
@@ -96,6 +98,8 @@ const LoginPage = () => {
     }
   };
 
+  
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-100 to-purple-200 flex items-center justify-center px-4 sm:px-6 lg:px-8 relative overflow-hidden">
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl relative z-10">
@@ -110,7 +114,7 @@ const LoginPage = () => {
                 name="email"
                 type="email"
                 required
-                className="appearance-none rounded-t-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                className="appearance-none rounded-t-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
                 placeholder="Email address"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -124,7 +128,7 @@ const LoginPage = () => {
                 name="password"
                 type="password"
                 required
-                className="appearance-none rounded-b-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                className="appearance-none rounded-b-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -133,10 +137,26 @@ const LoginPage = () => {
             </div>
           </div>
 
+          <div className="flex items-center justify-between">
+            <div className="text-sm">
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  navigate('/forgotpassword')
+                  
+                }} 
+                className="font-medium text-pink-600 hover:text-pink-500"
+              >
+                {isForgotPasswordLoading ? 'Sending...' : 'Forgot your password?'}
+              </a>
+            </div>
+          </div>
+
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+            className="w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
           >
             {isLoading ? 'Signing in...' : 'Sign in'}
           </button>
@@ -147,7 +167,7 @@ const LoginPage = () => {
 
         <p className="text-center mt-4 text-sm text-gray-600">
           Don't have an account?{' '}
-          <a onClick={() => navigate('/signup')} className="font-medium text-purple-600 hover:text-purple-500 cursor-pointer">
+          <a onClick={() => navigate('/signup')} className="font-medium text-pink-600 hover:text-pink-500 cursor-pointer">
             Sign up
           </a>
         </p>

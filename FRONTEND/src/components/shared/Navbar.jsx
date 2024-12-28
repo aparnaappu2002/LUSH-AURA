@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
+import { ShoppingCart } from 'lucide-react'; // Import the ShoppingCart icon
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
 
-  const navigate = useNavigate(); // Initialize navigate
-  const accountDropdownRef = useRef(null); // Create a ref for the account dropdown
+  const navigate = useNavigate();
+  const accountDropdownRef = useRef(null);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -14,14 +15,12 @@ const Navbar = () => {
         accountDropdownRef.current &&
         !accountDropdownRef.current.contains(event.target)
       ) {
-        setIsAccountDropdownOpen(false); // Close dropdown if clicked outside
+        setIsAccountDropdownOpen(false);
       }
     };
 
-    // Add event listener
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
-      // Clean up the event listener
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
@@ -70,8 +69,17 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Account Dropdown */}
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
+            {/* Cart Button */}
+            <button
+              onClick={() => navigate("/cart")}
+              className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 mr-4"
+            >
+              <span className="sr-only">View cart</span>
+              <ShoppingCart className="h-6 w-6" />
+            </button>
+
+            {/* Account Dropdown */}
             <div className="ml-3 relative" ref={accountDropdownRef}>
               <div>
                 <button
@@ -118,13 +126,28 @@ const Navbar = () => {
                   >
                     Register
                   </button>
+                  <button
+                    onClick={() => navigate("/profile")}
+                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                  >
+                    My Account
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
           {/* Mobile Menu Icon */}
-          <div className="-mr-2 flex items-center sm:hidden">
+          <div className="flex items-center sm:hidden">
+            {/* Cart Button for Mobile */}
+            <button
+              onClick={() => navigate("/cart")}
+              className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 mr-2"
+            >
+              <span className="sr-only">View cart</span>
+              <ShoppingCart className="h-6 w-6" />
+            </button>
+
             <button
               onClick={() => setIsOpen(!isOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500"
@@ -233,6 +256,12 @@ const Navbar = () => {
               >
                 Register
               </button>
+              <button
+                onClick={() => navigate("/profile")}
+                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+              >
+                Profile
+              </button>
             </div>
           </div>
         </div>
@@ -242,3 +271,4 @@ const Navbar = () => {
 };
 
 export default Navbar;
+

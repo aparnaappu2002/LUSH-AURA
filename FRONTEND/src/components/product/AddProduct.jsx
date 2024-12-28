@@ -3,10 +3,11 @@ import axios from "../../axios/adminAxios";
 import { toast } from "react-hot-toast";
 import cloudAxios from "axios";
 import { useNavigate } from "react-router-dom";
-import ReactCrop, { centerCrop, makeAspectCrop } from 'react-image-crop';
+import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
+import VarianceModal from "./Variance";
 
-export default function AddProduct() {
+ function AddProduct() {
   const [formData, setFormData] = useState({
     title: "",
     stockStatus: "",
@@ -28,6 +29,9 @@ export default function AddProduct() {
   const [currentImageIndex, setCurrentImageIndex] = useState(null);
   const [crop, setCrop] = useState();
   const [completedCrop, setCompletedCrop] = useState(null);
+  const [isVarianceModalOpen, setIsVarianceModalOpen] = useState(false);
+  const [variances, setVariances] = useState([]);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -63,6 +67,16 @@ export default function AddProduct() {
     if (image.length < 3) newErrors.images = "At least three images are required";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSaveVariance = (newVariance) => {
+    setVariances(prev => [...prev, {
+      ...newVariance,
+      images: newVariance.images.map(img => ({
+        file: img.file,
+        preview: img.preview || img.cropped || img
+      }))
+    }]);
   };
 
   const handleChange = (e) => {
@@ -193,6 +207,33 @@ export default function AddProduct() {
 
       const imageUrls = await Promise.all(uploadPromises);
 
+      const uploadVarianceImages = await Promise.all(
+        variances.map(async (variance) => {
+          if (variance.images && variance.images.length > 0) {
+            const imageUploads = await Promise.all(variance.images.map(async (img) => {
+              const formData = new FormData();
+              const varianceBlob = await fetch(img.preview).then((r) => r.blob());
+              formData.append("file", varianceBlob);
+              formData.append("upload_preset", "lush_aura");
+              formData.append("cloud_name", "dzpf5joxo");
+
+              const response = await cloudAxios.post(
+                "https://api.cloudinary.com/v1_1/dzpf5joxo/image/upload",
+                formData
+              );
+
+              return response.data.secure_url;
+            }));
+
+            return {
+              ...variance,
+              varianceImage: imageUploads,
+            };
+          }
+          return variance;
+        })
+      );
+
       const selectedCategory = categories.find(
         (cat) => cat.categoryName === formData.category
       );
@@ -209,17 +250,15 @@ export default function AddProduct() {
         highlights: formData.highlights,
         specifications: formData.specifications,
         sizes: formData.sizes,
+        variances: uploadVarianceImages,
       };
 
-      const uploadProduct = await axios.post("/addproduct", productDetails);
+      await axios.post("/addproduct", productDetails);
       toast.success("Product added successfully!");
       navigate("/productlist");
     } catch (error) {
-      if (error.response?.data?.code === 11000) {
-        toast.error("A product with this name already exists.");
-      } else {
-        toast.error(error.response?.data?.message || "Error uploading product");
-      }
+      console.error('Error saving product:', error);
+      toast.error('Failed to save product');
     } finally {
       setIsLoading(false);
     }
@@ -445,6 +484,29 @@ export default function AddProduct() {
             </div>
           )}
 
+          {/* Variances */}
+          <div>
+            <h2 className="text-lg font-semibold mb-2">Variances</h2>
+            {variances.map((variance, index) => (
+              <div key={index} className="bg-gray-50 p-3 rounded-md mb-2">
+                <p>Size: {variance.size}</p>
+                <p>Color: {variance.color}</p>
+                <p>Quantity: {variance.quantity}</p>
+                <p>Price: ${variance.price.toFixed(2)}</p>
+                {variance.imageUrls && variance.imageUrls.map((url, i) => (
+                  <img key={i} src={url} alt={`Variance ${index + 1} Image ${i + 1}`} className="mt-2 w-20 h-20 object-cover rounded-md" />
+                ))}
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={() => setIsVarianceModalOpen(true)}
+              className="mt-2 px-4 py-2 bg-[#7b437e] text-white rounded-md hover:bg-[#693769]"
+            >
+              Add Variance
+            </button>
+          </div>
+
           {/* Submit Button */}
           <button
             type="submit"
@@ -455,7 +517,16 @@ export default function AddProduct() {
           </button>
         </form>
       </div>
+
+      {/* Variance Modal */}
+      <VarianceModal
+        isOpen={isVarianceModalOpen}
+        onClose={() => setIsVarianceModalOpen(false)}
+        onSave={handleSaveVariance}
+      />
     </div>
   );
 }
+
+export default AddProduct;
 

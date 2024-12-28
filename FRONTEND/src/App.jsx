@@ -1,7 +1,7 @@
 
-import './App.css'
-import Admin from './components/pages/admin'
-import User from './components/pages/user'
+
+import Admin from './components/pages/Admin'
+import User from './components/pages/User'
 
 
 

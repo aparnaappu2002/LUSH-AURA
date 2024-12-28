@@ -14,7 +14,8 @@ const addProduct = async (req, res) => {
     description,
     status,
     imageUrl,
-    highlights,specifications
+    highlights,specifications,
+    variances,
   } = req.body;
 
   console.log(name, price, quantity, categoryId, description, status, imageUrl);
@@ -49,7 +50,8 @@ const addProduct = async (req, res) => {
       stock: status,
       categoryId,
       highlights,
-      specifications
+      specifications,
+      variances
     });
 
     await product.save();
@@ -81,7 +83,7 @@ const addProduct = async (req, res) => {
 const editProduct = async (req, res) => {
   const { id } = req.params;
   const {
-    title,
+    name,
   
     price,
     availableQuantity,
@@ -91,7 +93,8 @@ const editProduct = async (req, res) => {
     category,
     productImage,
     highlights,
-    specifications
+    specifications,
+    variances
   } = req.body;
 
   console.log("Received edit request for product ID:", id);
@@ -113,17 +116,17 @@ const editProduct = async (req, res) => {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    // Ensure productImage is an array
+    
     const existingImages = Array.isArray(existingProduct.productImage)
       ? existingProduct.productImage
       : [];
 
     const incomingImages = Array.isArray(productImage) ? productImage : [];
 
-    // Detect removed images
+    
     const removedImages = existingImages.filter(img => !incomingImages.includes(img));
 
-    // Delete removed images from the server
+    
     removedImages.forEach(img => {
       const filePath = path.join(__dirname, "../uploads", img);
       if (fs.existsSync(filePath)) {
@@ -132,11 +135,11 @@ const editProduct = async (req, res) => {
       }
     });
 
-    // Update product details
+
     const updatedProduct = await Products.findByIdAndUpdate(
       id,
       {
-        title,
+        title:name,
         
         price: numericPrice,
         availableQuantity,
@@ -146,12 +149,13 @@ const editProduct = async (req, res) => {
         stock,
         categoryId,
         highlights,
-        specifications
+        specifications,
+        variances
       },
       { new: true }
     );
 
-    console.log("Updated Product:", updatedProduct);
+    console.log("Updated Product title:", updatedProduct.title);
 
     return res.status(200).json({
       message: "Product edited successfully",
@@ -165,28 +169,49 @@ const editProduct = async (req, res) => {
 
 const showProductListed = async (req, res) => {
   try {
-      const products = await Products.find({ status: 'active' })
-          .populate({
-              path: 'categoryId',
-              select: 'categoryName status'
-          });
+    const { category, search } = req.query; // Extract category and search from query parameters
 
-      // Filter products with active categories only
-      const activeProducts = products.filter(product => product.categoryId?.status === 'active');
+    // Base query: Fetch only active products
+    let query = { status: 'active' };
 
-      if (!activeProducts || activeProducts.length === 0) {
-          return res.status(404).json({ message: 'No products found' });
-      }
+    // Apply category filter if provided
+    if (category) {
+      query.categoryId = category; // Assuming category is the category ID
+    }
 
-      return res.status(200).json({
-          message: 'Products fetched successfully',
-          products: activeProducts
+    // Apply search filter if provided (searching in product title and description)
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } }, // Case-insensitive regex for title
+        { description: { $regex: search, $options: 'i' } }, // Case-insensitive regex for description
+      ];
+    }
+
+    const products = await Products.find(query)
+      .populate({
+        path: 'categoryId',
+        select: 'categoryName status',
       });
+
+    // Filter products with active categories only
+    const activeProducts = products.filter(
+      (product) => product.categoryId?.status === 'active'
+    );
+
+    if (!activeProducts || activeProducts.length === 0) {
+      return res.status(404).json({ message: 'No products found' });
+    }
+
+    return res.status(200).json({
+      message: 'Products fetched successfully',
+      products: activeProducts,
+    });
   } catch (error) {
-      console.error('Error while fetching the products:', error);
-      return res.status(500).json({ message: 'Error while fetching the products' });
+    console.error('Error while fetching the products:', error);
+    return res.status(500).json({ message: 'Error while fetching the products' });
   }
 };
+
 
 
 
@@ -236,6 +261,28 @@ const relatedProducts = async (req, res) => {
   }
 };
 
+const filterProduct = async (req, res) => {
+  const { category, search } = req.query;
+  const filter = {};
+
+  if (category) {
+      filter.categoryId = category; // Assuming `categoryId` matches the filter value
+  }
+
+  if (search) {
+      filter.title = { $regex: search, $options: 'i' }; // Case-insensitive search by title
+  }
+
+  try {
+      const products = await Products.find(filter).populate('categoryId'); // Adjust population if needed
+      res.json({ products });
+  } catch (err) {
+      console.error('Error fetching products:', err);
+      res.status(500).json({ message: 'Failed to fetch products', error: err });
+  }
+}
+
+
 
 
 
@@ -244,5 +291,5 @@ const relatedProducts = async (req, res) => {
 
 
   
-  module.exports = { addProduct,showProduct,editProduct,showProductListed,showProductone,relatedProducts};
+  module.exports = { addProduct,showProduct,editProduct,showProductListed,showProductone,relatedProducts,filterProduct};
   

@@ -1,5 +1,31 @@
 const mongoose = require ('mongoose')
 
+const varianceSchema = new mongoose.Schema({
+    size: {
+        type: Number, 
+        required: false
+    },
+    color: {
+        type: String, 
+        required: false
+    },
+    quantity: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    price: {
+        type: Number,
+        required: true
+    },
+    varianceImage:{
+        type:[String],
+        required:true
+
+    },
+    
+
+});
 
 const productSchema = new mongoose.Schema({
     title:{
@@ -14,7 +40,8 @@ const productSchema = new mongoose.Schema({
     },
     availableQuantity:{
         type:Number, 
-        required:true
+        required:true,
+        default:0
     },
     description:{
         type:String,
@@ -52,6 +79,7 @@ const productSchema = new mongoose.Schema({
         type:String,
         required:false
     },
+    variances:[varianceSchema]
 
 
 

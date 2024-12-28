@@ -9,6 +9,7 @@ import CategoryManagement from "../admin/CategoryManagement";
 import ProductList from "../product/ProductList";
 import AddProduct from "../product/AddProduct";
 
+
 const LayoutWrapper = ({ children }) => {
   const location = useLocation();
   if (location.pathname === "/" || location.pathname === "/adminlogin" || location.pathname === "/shop" || location.pathname === "/productdetails" ) {
@@ -17,6 +18,7 @@ const LayoutWrapper = ({ children }) => {
   return <Layout>{children}</Layout>;
 };
 import ProtectRoute from "../../protectroute/Protectroute";
+import OrderDetails from "../admin/OrderDetails";
 
 function Admin() {
   return (
@@ -28,6 +30,7 @@ function Admin() {
         <Route path="/categorymanagement" element={<ProtectRoute><CategoryManagement /> </ProtectRoute>} />
         <Route path="/productlist" element={<ProtectRoute> <ProductList /> </ProtectRoute> } />
         <Route path="/addproduct" element={<ProtectRoute>  <AddProduct /> </ProtectRoute>}/>
+        <Route path="/orders" element={<ProtectRoute>  <OrderDetails/> </ProtectRoute>}/>
       </Route>
       </Routes>
     

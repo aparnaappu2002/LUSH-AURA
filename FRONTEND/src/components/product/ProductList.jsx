@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from '../../axios/adminAxios';
-import { PlusIcon, PencilIcon, TrashIcon, XIcon } from 'lucide-react';
+import { PlusIcon, PencilIcon, TrashIcon, XIcon,ChevronLeftIcon,ChevronRightIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import cloudAxios from 'axios';
@@ -19,6 +19,27 @@ function ProductList() {
   const [crop, setCrop] = useState({ unit: '%', width: 30, aspect: 16 / 9 });
   const [completedCrop, setCompletedCrop] = useState(null);
   const [imageIndex, setImageIndex] = useState(null);
+  const [variantModalOpen, setVariantModalOpen] = useState(false);
+  const [currentVariant, setCurrentVariant] = useState({ name: '', value: '' });
+  const [editingVariantIndex, setEditingVariantIndex] = useState(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState({});
+
+  const [currentVariantImages, setCurrentVariantImages] = useState([]);
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const productsPerPage = 8; 
+
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+  const currentProducts = products.slice(indexOfFirstProduct, indexOfLastProduct);
+
+  const totalPages = Math.ceil(products.length / productsPerPage);
+
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+  };
+
+
 
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
@@ -28,8 +49,11 @@ function ProductList() {
     status: 'active',
     image: null,
     highlights: '',
-    specifications: ''
+    specifications: '',
+    variances: []
   });
+
+  
 
   useEffect(() => {
     fetchProducts();
@@ -38,14 +62,19 @@ function ProductList() {
   const fetchProducts = async () => {
     try {
       const response = await axios.get('/productlist');
-      console.log("Products:", response.data.products);
-      setProducts(Array.isArray(response.data.products) ? response.data.products : []);
+      const formattedProducts = response.data.products.map(product => ({
+        ...product,
+        variances: product.variances || product.variants || []  // Fallback if API sends `variants`
+      }));
+      setProducts(formattedProducts);
+      console.log("Formatted Products:", formattedProducts);  // Debugging
     } catch (error) {
       console.error('Error fetching products:', error);
       toast.error('Failed to fetch products');
       setProducts([]);
     }
   };
+  
 
   const handleAddProduct = () => {
     navigate('/addproduct');
@@ -65,7 +94,8 @@ function ProductList() {
       status: productToEdit.status,
       highlights: productToEdit.highlights || '',
       specifications: productToEdit.specifications || '',
-      image: null
+      image: null,
+      variances: productToEdit.variances || []
     });
     setUploadedImages(productToEdit.productImage.map(url => ({ url, isExisting: true })));
     setIsConfirmModalOpen(false);
@@ -103,6 +133,7 @@ function ProductList() {
         productImage: newImageUrls,
         highlights: formData.highlights,
         specifications: formData.specifications,
+        variances: formData.variances
       };
 
       console.log("Final FormData to be submitted:", payload);
@@ -224,6 +255,103 @@ function ProductList() {
     }
   }, [completedCrop, imageToCrop, imageIndex]);
 
+  const handleAddVariant = () => {
+    setCurrentVariant({ color: '', size: '', quantity: '', price: '', varianceImage: [] });
+    setCurrentVariantImages([]);
+    setEditingVariantIndex(null);
+    setVariantModalOpen(true);
+  };
+
+  const handleEditVariant = (index) => {
+    const variant = formData.variances[index];
+    setCurrentVariant(variant);
+    setCurrentVariantImages(variant.varianceImage || []);
+    setEditingVariantIndex(index);
+    setVariantModalOpen(true);
+  };
+
+
+  const handleImageNavigation = (index, direction) => {
+    const varianceImages = formData.variances[index]?.varianceImage || [];
+  
+    if (varianceImages.length > 0) {
+      setCurrentImageIndex((prevState) => {
+        const currentIndex = prevState[index] || 0;
+        const nextIndex = (currentIndex + direction + varianceImages.length) % varianceImages.length;
+        
+        // Return new state without causing extra renders
+        return { ...prevState, [index]: nextIndex };
+      });
+    }
+  };
+  
+  const handleSaveVariant = async () => {
+    try {
+      const updatedVariant = { ...currentVariant };
+      
+      // Handle image uploads
+      const newImageUrls = [];
+      for (const img of currentVariantImages) {
+        if (img instanceof File) {
+          const imageData = new FormData();
+          imageData.append('file', img);
+          imageData.append('upload_preset', 'lush_aura');
+          imageData.append("cloud_name", "dzpf5joxo");
+
+          const cloudinaryResponse = await cloudAxios.post(
+            'https://api.cloudinary.com/v1_1/dzpf5joxo/image/upload',
+            imageData
+          );
+          newImageUrls.push(cloudinaryResponse.data.secure_url);
+        } else {
+          newImageUrls.push(img);
+        }
+      }
+      updatedVariant.varianceImage = newImageUrls;
+
+      setFormData(prevData => {
+        const newVariances = [...prevData.variances];
+        if (editingVariantIndex !== null) {
+          newVariances[editingVariantIndex] = updatedVariant;
+        } else {
+          newVariances.push(updatedVariant);
+        }
+        return { ...prevData, variances: newVariances };
+      });
+
+      setVariantModalOpen(false);
+      toast.success(editingVariantIndex !== null ? 'Variant updated successfully' : 'Variant added successfully');
+    } catch (error) {
+      console.error('Error saving variant:', error);
+      toast.error('Failed to save variant');
+    }
+  };
+
+  const handleVariantImageUpload = (e) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const newImages = Array.from(e.target.files);
+      setCurrentVariantImages(prevImages => [...prevImages, ...newImages]);
+    }
+  };
+
+  const handleDeleteVariantImage = (index) => {
+    setCurrentVariantImages(prevImages => prevImages.filter((_, i) => i !== index));
+  };
+  
+
+  // const handleSaveVariant = () => {
+  //   setFormData(prevData => {
+  //     const newVariants = [...(prevData.variances || [])];
+  //     if (editingVariantIndex !== null) {
+  //       newVariants[editingVariantIndex] = currentVariant;
+  //     } else {
+  //       newVariants.push(currentVariant);
+  //     }
+  //     return { ...prevData, variances: newVariants };
+  //   });
+  //   setVariantModalOpen(false);
+  // };
+
   return (
     <div className="min-h-screen bg-pink-50 p-6">
       <div className="max-w-6xl mx-auto">
@@ -246,12 +374,13 @@ function ProductList() {
                 <th className="py-3 px-4 text-left text-pink-800">Name</th>
                 <th className="py-3 px-4 text-left text-pink-800">Price</th>
                 <th className="py-3 px-4 text-left text-pink-800">Status</th>
+                <th className="py-3 px-4 text-left text-pink-800">Variants</th>
                 <th className="py-3 px-4 text-left text-pink-800">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-pink-100">
-              {products.length > 0 ? (
-                products.map((product) => (
+              {currentProducts.length > 0 ? (
+                currentProducts.map((product) => (
                   <tr key={product._id} className="hover:bg-pink-50 transition-colors duration-150">
                     <td className="py-3 px-4">
                       <img
@@ -272,6 +401,17 @@ function ProductList() {
                       </span>
                     </td>
                     <td className="py-3 px-4">
+                  {product.variances && Array.isArray(product.variances) && product.variances.length > 0 ? (
+                    <div className="flex items-center justify-center w-8 h-8 bg-pink-100 rounded-full">
+                      <span className="text-sm font-medium text-pink-800">
+                        {product.variances.length}
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="text-sm text-gray-500">No variants</span>
+                  )}
+                </td>
+                    <td className="py-3 px-4">
                       <button
                         onClick={() => handleEditProduct(product)}
                         className="text-pink-600 hover:text-pink-800 mr-2 transition-colors duration-150"
@@ -283,18 +423,37 @@ function ProductList() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-4 px-4 text-center text-pink-800">
+                  <td colSpan="6" className="py-4 px-4 text-center text-pink-800">
                     No products available.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
+          
         </div>
+              {/* Pagination Controls */}
+      <div className="flex justify-center mt-4">
+        {Array.from({ length: totalPages }, (_, index) => (
+          <button
+            key={index + 1}
+            onClick={() => handlePageChange(index + 1)}
+            className={`px-4 py-2 mx-1 rounded ${
+              currentPage === index + 1
+                ? "bg-pink-600 text-white"
+                : "bg-gray-200 text-pink-800"
+            }`}
+          >
+            {index + 1}
+          </button>
+        ))}
+      </div>
+
+
 
         {isModalOpen && (
-          <div className="fixed inset-0 bg-pink-100 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center">
-            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-md">
+          <div className="fixed inset-0 bg-pink-100 bg-opacity-75 overflow-y-auto h-full w-full flex items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+            <div className="bg-white p-8 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-2xl font-bold text-pink-800">
                   {editingProduct ? 'Edit' : 'Add'} Beauty Product
@@ -429,6 +588,101 @@ function ProductList() {
                       hover:file:bg-pink-100"
                   />
                 </div>
+                <div className="space-y-4">
+
+                  
+      <label className="block text-lg font-semibold text-pink-700 mb-2">
+        Variants
+      </label>
+
+      {formData.variances && formData.variances.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {formData.variances.map((variant, index) => (
+            <div
+              key={variant._id || index}
+              className="bg-pink-50 p-4 rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300"
+            >
+              <h3 className="font-bold text-pink-800 text-lg mb-3">
+                Variant {index + 1}
+              </h3>
+
+              <div className="grid grid-cols-2 gap-2 text-sm mb-2">
+                <p>
+                  <strong className="text-pink-700">Color: </strong>
+                  {variant.color || "N/A"}
+                </p>
+                <p>
+                  <strong className="text-pink-700">Size: </strong>
+                  {variant.size || "N/A"}
+                </p>
+                <p>
+                  <strong className="text-pink-700">Quantity: </strong>
+                  {variant.quantity || 0}
+                </p>
+                <p>
+                  <strong className="text-pink-700">Price: </strong>₹
+                  {variant.price?.toFixed(2) || "0.00"}
+                </p>
+              </div>
+
+              {/* Display Images */}
+              {variant?.varianceImage?.length > 0 && (
+                <div className="relative mt-4">
+                  <img
+                    src={variant.varianceImage[currentImageIndex[index] || 0]}
+                    alt={`Variant ${index + 1}`}
+                    className="w-full h-32 object-cover rounded-md"
+                  />
+
+                  {variant.varianceImage.length > 1 && (
+                    <>
+                      <button
+                      type='button'
+                        onClick={() => handleImageNavigation(index, -1)}
+                        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full"
+                      >
+                        <ChevronLeftIcon className="w-5 h-5" />
+                      </button>
+
+                      <button
+                      type='button'
+                        onClick={() => handleImageNavigation(index, 1)}
+                        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-1 rounded-full"
+                      >
+                        <ChevronRightIcon className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                  
+                </div>
+              )}
+              <button
+                            type="button"
+                            onClick={() => handleEditVariant(index)}
+                            className="mt-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-1 px-2 rounded"
+                          >
+                            Edit Variant
+                          </button>
+            </div>
+          ))}
+          
+        </div>
+      ) : (
+        <p className="text-sm text-pink-600 mb-4 italic">No variants added yet.</p>
+      )}
+      <button
+                    type="button"
+                    onClick={handleAddVariant}
+                    className="bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 px-4 rounded"
+                  >
+                    Add New Variant
+                  </button>
+    </div>
+
+    
+
+    
+
                 <div className="flex justify-end">
                   <button
                     type="submit"
@@ -496,10 +750,122 @@ function ProductList() {
             </div>
           </div>
         )}
+
+{variantModalOpen && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+              <h3 className="text-xl font-bold text-pink-800 mb-4">
+                {editingVariantIndex !== null ? 'Edit Variant' : 'Add Variant'}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="variantColor" className="block text-sm font-medium text-pink-700">
+                    Color
+                  </label>
+                  <input
+                    type="text"
+                    id="variantColor"
+                    value={currentVariant.color || ''}
+                    onChange={(e) => setCurrentVariant({ ...currentVariant, color: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="variantSize" className="block text-sm font-medium text-pink-700">
+                    Size
+                  </label>
+                  <input
+                    type="text"
+                    id="variantSize"
+                    value={currentVariant.size || ''}
+                    onChange={(e) => setCurrentVariant({ ...currentVariant, size: e.target.value })}
+                    className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="variantQuantity" className="block text-sm font-medium text-pink-700">
+                    Quantity
+                  </label>
+                  <input
+                    type="number"
+                    id="variantQuantity"
+                    value={currentVariant.quantity || ''}
+                    onChange={(e) => setCurrentVariant({ ...currentVariant, quantity: parseInt(e.target.value) })}
+                    className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="variantPrice" className="block text-sm font-medium text-pink-700">
+                    Price
+                  </label>
+                  <input
+                    type="number"
+                    id="variantPrice"
+                    value={currentVariant.price || ''}
+                    onChange={(e) => setCurrentVariant({ ...currentVariant, price: parseFloat(e.target.value) })}
+                    className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="variantImage" className="block text-sm font-medium text-pink-700">
+                    Variant Images
+                  </label>
+                  <input
+                    type="file"
+                    id="variantImage"
+                    multiple
+                    onChange={handleVariantImageUpload}
+                    className="mt-1 block w-full text-sm text-pink-500
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-full file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-pink-50 file:text-pink-700
+                      hover:file:bg-pink-100"
+                  />
+                </div>
+                {currentVariantImages.length > 0 && (
+                  <div className="grid grid-cols-3 gap-4 mt-4">
+                    {currentVariantImages.map((img, index) => (
+                      <div key={index} className="relative">
+                        <img
+                          src={img instanceof File ? URL.createObjectURL(img) : img}
+                          alt={`Variant ${index + 1}`}
+                          className="w-full h-24 object-cover rounded-md"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteVariantImage(index)}
+                          className="absolute top-0 right-0 bg-red-500 text-white rounded-full p-1 text-xs"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end mt-6 space-x-4">
+                <button
+                  onClick={() => setVariantModalOpen(false)}
+                  className="px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveVariant}
+                  className="px-4 py-2 bg-pink-500 text-white rounded-md hover:bg-pink-600 transition-colors"
+                >
+                  Save Variant
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+
       </div>
     </div>
   );
 }
 
 export default ProductList;
-

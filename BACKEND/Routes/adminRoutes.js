@@ -5,6 +5,7 @@ const verifyAdmin =require( "../auth/adminAuth")
 
 const { addCategory, showCategory, editStatus, editCategory } = require("../Controller/categoryController")
 const {addProduct, showProduct, editProduct}=require('../Controller/productController')
+const { getOrders, editOrders } = require("../Controller/orderController")
 
 
 adminRoute.post('/adminlogin',login)
@@ -21,6 +22,9 @@ adminRoute.post('/addproduct',verifyAdmin,addProduct)
 adminRoute.get('/productlist',verifyAdmin,showProduct)
 adminRoute.put('/editproduct/:id',verifyAdmin,editProduct)
 
+
+adminRoute.get('/orders',verifyAdmin,getOrders)
+adminRoute.put('/editorder/:orderId',verifyAdmin,editOrders)
 
 
 

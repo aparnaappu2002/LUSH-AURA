@@ -264,19 +264,19 @@ const login = async (req, res) => {
         let token, refreshToken;
         
         if (!user.googleId) {
-            console.log("Plaintext password:", password);
-            console.log("Stored hashed password:", user.password);
+           // console.log("Plaintext password:", password);
+           // console.log("Stored hashed password:", user.password);
             const isPasswordValid = await bcrypt.compare(password, user.password);
             console.log("Password Valid",isPasswordValid)
             if (!isPasswordValid) return res.status(400).json({ message: "Invalid password" });
-            console.log("Access Token Secret:", process.env.ACCESS_TOKEN_SECRET_KEY);
-            console.log("Refresh Token Secret:", process.env.REFRESH_TOKEN_SECRET_KEY);
+            //console.log("Access Token Secret:", process.env.ACCESS_TOKEN_SECRET_KEY);
+            //console.log("Refresh Token Secret:", process.env.REFRESH_TOKEN_SECRET_KEY);
 
             
             token = await jwt.sign({ email: email }, process.env.ACCESS_TOKEN_SECRET_KEY, { expiresIn: '1h' });
-            console.log("Token generated:",token)
+            //console.log("Token generated:",token)
             refreshToken = await jwt.sign({ email: email }, process.env.REFRESH_TOKEN_SECRET_KEY, { expiresIn: '7d' });
-            console.log(" Referesh Token generated:",refreshToken)
+            //console.log(" Referesh Token generated:",refreshToken)
         } 
 
         // Store the refresh token in an HttpOnly cookie
@@ -333,14 +333,221 @@ const refreshToken = async (req, res) => {
     }
 };
 
+const changeInformation = async (req, res) => {
+  const { userId } = req.params;
+  const { firstName, lastName, phone, email } = req.body;
+
+  if (!firstName || !lastName || !phone || !email) {
+    return res.status(400).json({ message: "All fields are required" });
+  }
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { firstName, lastName, phoneNumber:phone, email },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(updatedUser);
+  } catch (error) {
+    console.error("Update failed:", error.message);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+
+
+
+// GET user details by ID
+const getUser = async (req, res) => {
+  const { id } = req.params; // Extract user ID from request params
+
+  try {
+    const user = await User.findById(id); // Fetch user details from MongoDB
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Exclude sensitive data like password
+    const userData = {
+      _id: user._id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phoneNumber: user.phoneNumber,
+      joinDate: user.joinDate,
+      isAdmin: user.isAdmin,
+      status: user.status,
+      GoogleVerified: user.GoogleVerified,
+    };
+
+    res.status(200).json(userData); // Send user details to the client
+  } catch (err) {
+    res.status(500).json({ message: 'Internal server error', error: err.message });
+  }
+};
+
+const changePassword = async (req, res) => {
+    try {
+        const { userId } = req.params; // Extract userId from the URL params
+        const { oldPassword, newPassword, confirmPassword } = req.body; // Extract form data from the request body
+
+        // Check if all fields are provided
+        if (!oldPassword || !newPassword || !confirmPassword) {
+            return res.status(400).json({ message: 'All fields are required' });
+        }
+
+        // Check if new password and confirm password match
+        if (newPassword !== confirmPassword) {
+            return res.status(400).json({ message: 'New password and confirm password do not match' });
+        }
+
+        // Find the user by userId
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Verify if the old password matches the stored password
+        const isOldPasswordValid = await bcrypt.compare(oldPassword, user.password);
+        if (!isOldPasswordValid) {
+            return res.status(400).json({ message: 'Old password is incorrect' });
+        }
+
+        // Hash the new password
+        const hashedNewPassword = await securePassword(newPassword);
+
+        // Update the user's password with the new hashed password
+        user.password = hashedNewPassword;
+        await user.save();
+
+        // Respond with a success message
+        return res.status(200).json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('Error changing password:', error);
+        return res.status(500).json({ message: 'Error while changing the password' });
+    }
+};
+
+const generateResetToken = (email) => {
+    return jwt.sign({ email }, process.env.JWT_SECRET, { expiresIn: '1h' });
+};
+
+// Helper: Send Email
+const sendResetPasswordMail = async (email, resetToken) => {
+    const resetPasswordUrl = `${process.env.FRONTEND_URL}/resetpassword/${resetToken}`;
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.NODEMAILER_EMAIL,
+                pass: process.env.NODEMAILER_PASSWORD,
+            },
+        });
+
+        await transporter.sendMail({
+            from: process.env.NODEMAILER_EMAIL,
+            to: email,
+            subject: 'Password Reset Request',
+            html: `
+                <p>You requested a password reset.</p>
+                <p>Click the link below to reset your password:</p>
+                <a href="${resetPasswordUrl}">${resetPasswordUrl}</a>
+                <p>This link is valid for 1 hour.</p>
+            `,
+        });
+
+        console.log(`Password reset email sent to ${email}`);
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw new Error('Email sending failed');
+    }
+};
+
+// Forgot Password Route
+const forgotPassword = async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) return res.status(400).json({ message: 'Email is required' });
+
+        // Check if the user exists
+        const user = await User.findOne({ email });
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        // Generate reset token
+        const resetToken = generateResetToken(email);
+
+        // Send email
+        await sendResetPasswordMail(email, resetToken);
+
+        res.status(200).json({ success: true, message: 'Reset link sent to your email' });
+    } catch (error) {
+       // handleError(res, error);
+    }
+};
+
+
+// Reset Password Route
+const resetPassword = async (req, res) => {
+    const { token } = req.params;
+    console.log("Token:", token);
+    const { newPassword } = req.body;
+    console.log("Password:", newPassword);
+
+    try {
+        // Verify token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("Decoded:", decoded);
+
+        // Find the user
+        const user = await User.findOne({ email: decoded.email }); // Use findOne with query object
+        console.log("User:", user);
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Update the password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        user.password = hashedPassword;
+
+        // Save updated user
+        await user.save();
+
+        res.status(200).json({ success: true, message: 'Password has been reset' });
+    } catch (error) {
+        console.error("Error:", error.message); // Log the error for debugging
+        res.status(400).json({ success: false, message: 'Invalid or expired token' });
+    }
+};
+
+
+
+
+
+
+
+  
+
+  
+  
+
 module.exports={
     signUp,
     login,
     refreshToken,
     otpVerification,
     resendOtp,
-    googleLogin
-
-    
+    googleLogin,
+    changeInformation,
+    getUser,
+    changePassword,
+    sendResetPasswordMail,
+    forgotPassword,
+    resetPassword
 
 }

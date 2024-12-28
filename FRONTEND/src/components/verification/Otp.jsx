@@ -133,7 +133,7 @@ const OTPVerification = () => {
                   key={index}
                   type="text"
                   maxLength="1"
-                  className="w-12 h-12 text-center text-2xl border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-12 h-12 text-center text-2xl border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-pink-500"
                   value={data}
                   onChange={(e) => handleChange(e.target, index)}
                   onFocus={(e) => e.target.select()}
@@ -142,7 +142,7 @@ const OTPVerification = () => {
             </div>
             <button
               type="submit"
-              className="w-full px-4 py-2 text-sm font-semibold text-white bg-blue-500 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
+              className="w-full px-4 py-2 text-sm font-semibold text-white bg-pink-500 rounded-md hover:bg-pink-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200"
             >
               Verify OTP
             </button>
