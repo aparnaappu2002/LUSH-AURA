@@ -16,10 +16,7 @@ const categorySchema = new mongoose.Schema({
         type:Date,
         default:Date.now()
     },
-    //  products:[{
-    //      type:mongoose.Types.ObjectId,
-    //       ref:"products"
-    //  }]
+    
 })
 
 const Category = mongoose.model("category",categorySchema)

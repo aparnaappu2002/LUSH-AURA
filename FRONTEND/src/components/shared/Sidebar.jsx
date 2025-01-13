@@ -6,6 +6,8 @@ import {
   FaUserFriends, FaStar, FaImage, FaBars, FaTimes,
   FaShoppingCart
 } from 'react-icons/fa';
+import { IoBarChartSharp } from "react-icons/io5";
+
 
 const SidebarItem = ({ icon, text, to, isOpen }) => (
   <Link to={to} className={`flex items-center space-x-2 px-4 py-3 text-gray-700 hover:bg-pink-100 hover:text-pink-600 rounded-lg transition-all duration-200 ${isOpen ? '' : 'justify-center'}`}>
@@ -42,6 +44,7 @@ const Sidebar = () => {
         <SidebarItem icon={<FaShoppingCart className="w-5 h-5" />} text="Orders" to="/orders" isOpen={isOpen} />
         <SidebarItem icon={<FaStar className="w-5 h-5" />} text="Reviews" to="/reviews" isOpen={isOpen} />
         <SidebarItem icon={<FaImage className="w-5 h-5" />} text="Banners" to="/banners" isOpen={isOpen} />
+        <SidebarItem icon={<IoBarChartSharp className="w-5 h-5" />} text="Sales" to="/sales" isOpen={isOpen} />
       </nav>
     </div>
   );

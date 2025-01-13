@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { FaShoppingBag, FaUserEdit, FaRegHeart, FaChevronLeft, FaChevronRight,FaAddressBook } from "react-icons/fa";
+import { FaShoppingBag, FaUserEdit, FaRegHeart, FaChevronLeft, FaChevronRight,FaAddressBook,FaWallet } from "react-icons/fa";
 
 const Sidebar = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -49,6 +49,12 @@ const Sidebar = () => {
             <Link to="/wishlist" className={`flex items-center px-4 py-3 ${isActive('/wishlist')} transition-colors duration-200`}>
               <FaRegHeart className={`h-5 w-5 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
               {!isCollapsed && <span>Wishlist</span>}
+            </Link>
+          </li>
+          <li>
+            <Link to="/wallet" className={`flex items-center px-4 py-3 ${isActive('/wallet')} transition-colors duration-200`}>
+              <FaWallet className={`h-5 w-5 ${isCollapsed ? 'mx-auto' : 'mr-3'}`} />
+              {!isCollapsed && <span>Wallet</span>}
             </Link>
           </li>
         </ul>

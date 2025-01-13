@@ -5,8 +5,12 @@ const {showProductListed, showProductone, relatedProducts,filterProduct} = requi
 const {addAddress, showAddress, editAddress, removeAddress} = require("../Controller/addressController")
 const {authToken} = require('../auth/userAuth')
 const {cartAdd, getCartItems, removeCartItem, updateCartQuantity, removeCart} = require("../Controller/cartController")
-const { addOrder, getUserOrder, cancelOrder } = require("../Controller/orderController")
+const { addOrder, getUserOrder, cancelOrder, returnOrder, verifyPayment } = require("../Controller/orderController")
 const {showCategory} = require("../Controller/categoryController")
+const { wishlistAdd, fetchWishlist, wishlistDelete, wishAdd } = require("../Controller/wishlistController")
+const { getCoupons } = require("../Controller/couponController")
+const { getWalletData } = require("../Controller/walletController")
+const { productOfferbyId, categoryOfferbyId, getProductOffers } = require("../Controller/offerController")
 
 userRoute.post('/signup',signUp)
 userRoute.post('/otpverification',otpVerification)
@@ -39,9 +43,31 @@ userRoute.put('/updatecart',authToken,updateCartQuantity)
 userRoute.post('/addOrder',authToken,addOrder)
 userRoute.post('/cartempty',authToken,removeCart)
 userRoute.get('/orders/:userId',authToken,getUserOrder)
-userRoute.post('/cancelorder/:orderId',authToken,cancelOrder)
+userRoute.post('/cancelproduct/:orderId',authToken,cancelOrder)
+userRoute.post('/returnorder/:orderId',authToken,returnOrder)
+
+userRoute.post('/verifypayment',authToken,verifyPayment)
 
 userRoute.get('/category',showCategory)
+userRoute.get('/category',showCategory)
+
+
+userRoute.post('/wishlistadd',wishlistAdd)
+userRoute.get('/wishlist/:userId',fetchWishlist)
+userRoute.delete('/wishlistdelete/:id',wishlistDelete)
+userRoute.post('/wishadd',wishAdd)
+
+
+userRoute.get('/coupons',authToken,getCoupons)
+
+userRoute.get('/wallet/:userId',authToken,getWalletData)
+
+
+userRoute.get('/product-offers/:productId',authToken,productOfferbyId)
+userRoute.get('/category-offers/:categoryId',authToken,categoryOfferbyId)
+userRoute.get('/offers/products',authToken,getProductOffers)
+
+
 
 
 

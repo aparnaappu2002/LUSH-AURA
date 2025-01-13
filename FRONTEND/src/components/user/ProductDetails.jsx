@@ -5,6 +5,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import Navbar from "../shared/Navbar";
 import Breadcrumb from "../shared/BreadCrumbs";
+import {toast,Toaster} from "react-hot-toast";
 
 const ProductDetails = () => {
   const [quantity, setQuantity] = useState(1);
@@ -18,12 +19,32 @@ const ProductDetails = () => {
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedVariance, setSelectedVariance] = useState(null); // New state to store the selected variance
-  const [showLoginModal, setShowLoginModal] = useState(false); // State for login modal
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [discountedPrice, setDiscountedPrice] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [currentImages, setCurrentImages] = useState([]);
+
   const { id: productId } = useParams();
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   console.log("User:",user)
   const userId= user.id || user._id
+
+  const calculateDiscount = () => {
+    const basePrice = selectedVariance ? selectedVariance.price : product.price;
+    let maxDiscount = 0;
+  
+    if (product.bestOffer) {
+      maxDiscount = product.bestOffer.discountPercentage;
+    }
+  
+    const discountAmount = (basePrice * maxDiscount) / 100;
+    const newDiscountedPrice = basePrice - discountAmount;
+    console.log("Discount:", newDiscountedPrice);
+  
+    setDiscountedPrice(newDiscountedPrice);
+    setDiscount(maxDiscount);
+  };
 
   useEffect(() => {
     fetchProductDetails();
@@ -31,25 +52,52 @@ const ProductDetails = () => {
     fetchProductReviews();
   }, [productId]);
 
+  useEffect(() => {
+    if (product && selectedVariance) {
+      console.log('Product data:', {
+        basePrice: selectedVariance ? selectedVariance.price : product.price,
+        offer: product.offer,
+        category: product.category
+      });
+      calculateDiscount();
+    }
+  }, [product, selectedVariance, calculateDiscount]);
+  
   const fetchProductDetails = async () => {
     try {
       const response = await axios.get(`/productdetails/${productId}`);
-      console.log("productDetails:",response)
+      console.log("Product details fetched:", response);
+
       if (response.status === 200 && response.data) {
+        // Set the entire product data
         setProduct(response.data);
-        setSelectedImage(response.data.productImage[0]);
+
+        // Set the first product image (ensure it is not empty)
+        setSelectedImage(response.data.productImage?.[0] || ''); 
+
+        // Set the default size, color, and variance based on the fetched data
         if (response.data.variances && response.data.variances.length > 0) {
-          // Set default variance to the first one
-          setSelectedSize(response.data.variances[0].size);
-          setSelectedColor(response.data.variances[0].color);
-          setSelectedVariance(response.data.variances[0]);
+          const defaultVariance = response.data.variances[0];
+          setSelectedSize(defaultVariance.size || 'Default Size');
+          setSelectedColor(defaultVariance.color || 'Default Color');
+          setSelectedVariance(defaultVariance);
         }
+      } else {
+        console.warn('Unexpected response structure:', response);
       }
     } catch (error) {
-      console.error("Error fetching product details:", error);
+      // Handle errors (network issues, server errors, etc.)
+      if (error.response) {
+        console.error("Server responded with an error:", error.response.data);
+      } else if (error.request) {
+        console.error("No response received:", error.request);
+      } else {
+        console.error("Error setting up request:", error.message);
+      }
     }
-  };
+};
 
+  
   const fetchRelatedProducts = async () => {
     try {
       const response = await axios.get(`/relatedproducts/${productId}`);
@@ -97,9 +145,87 @@ const ProductDetails = () => {
 
   
 
-  const toggleLike = () => {
-    setIsLiked(!isLiked);
+  const toggleLike = async () => {
+    try {
+      // Fetch the user's wishlist
+      const response = await axios.get(`/wishlist/${userId}`);
+      console.log("Response:", response);
+  
+      if (response.status === 200) {
+        const wishlist = response.data; // Access the 'data' key in the response
+        console.log("Wishlist:", wishlist);
+  
+        // Check if wishlist exists and has items
+        if (wishlist.data && Array.isArray(wishlist.data) && wishlist.data.length > 0) {
+          // Loop through the items to check if the product is already in the wishlist
+          const isAlreadyInWishlist = wishlist.data.some((item) => item.productId._id === product._id);
+  
+          if (isAlreadyInWishlist) {
+            // Product is already in the wishlist, show an alert or message
+            toast.error("Product is already in your wishlist.");
+            return; // Prevent adding the product again
+          }
+        }
+      } else {
+        console.log("No wishlist found for the user. Proceeding to add the product.");
+      }
+  
+      // Add the product to the wishlist
+      const wishlistPayload = {
+        userId: userId,
+        productId: product._id,
+        productName: product.title,
+        price: selectedVariance ? selectedVariance.price : product.price,
+        image: selectedVariance?.varianceImage?.[0] || product.productImage?.[0] || "",
+        variance: selectedVariance
+          ? {
+              size: selectedVariance.size || undefined,
+              color: selectedVariance.color || undefined,
+            }
+          : null,
+      };
+  
+      console.log("Wishlist data:", wishlistPayload);
+  
+      const addResponse = await axios.post("/wishlistadd", wishlistPayload);
+      if (addResponse.status === 200) {
+        toast.success("Product added to your wishlist.");
+        setIsLiked(true);
+      }
+    } catch (error) {
+      // Handle cases where no wishlist exists or any other errors
+      if (error.response && error.response.status === 404) {
+        console.log("No wishlist exists for the user. Proceeding to create a new one.");
+        const wishlistPayload = {
+          userId: userId,
+          productId: product._id,
+          productName: product.title,
+          price: selectedVariance ? selectedVariance.price : product.price,
+          image: selectedVariance?.varianceImage?.[0] || product.productImage?.[0] || "",
+          variance: selectedVariance
+            ? {
+                size: selectedVariance.size || undefined,
+                color: selectedVariance.color || undefined,
+              }
+            : null,
+        };
+  
+        console.log("Wishlist data (new):", wishlistPayload);
+  
+        const addResponse = await axios.post("/wishlistadd", wishlistPayload);
+        if (addResponse.status === 200) {
+          toast.success("Product added to your wishlist.");
+          setIsLiked(true);
+        }
+      } else {
+        console.error("Error managing wishlist:", error);
+        toast.error("An error occurred while managing your wishlist. Please try again.");
+      }
+    }
   };
+  
+  
+  
 
   const toggleDropdown = (type) => {
     if (type === "highlights") {
@@ -109,47 +235,131 @@ const ProductDetails = () => {
     }
   };
 
+  // First, modify the handleSizeChange function
   const handleSizeChange = (size) => {
-    setSelectedSize(size);
-    updateSelectedVariance(size, selectedColor);
+    const availableVariances = product.variances.filter(
+      (variance) => variance.size === size
+    );
+  
+    if (availableVariances.length > 0) {
+      setSelectedSize(size);
+      
+      if (selectedColor) {
+        const matchingVariance = availableVariances.find(
+          (variance) => variance.color.toLowerCase() === selectedColor.toLowerCase()
+        );
+        
+        if (matchingVariance) {
+          setSelectedVariance(matchingVariance);
+          setCurrentImages(matchingVariance.varianceImage);
+          setSelectedImage(matchingVariance.varianceImage[0]);
+        } else {
+          setSelectedColor(availableVariances[0].color);
+          setSelectedVariance(availableVariances[0]);
+          setCurrentImages(availableVariances[0].varianceImage);
+          setSelectedImage(availableVariances[0].varianceImage[0]);
+        }
+      } else {
+        setSelectedColor(availableVariances[0].color);
+        setSelectedVariance(availableVariances[0]);
+        setCurrentImages(availableVariances[0].varianceImage);
+        setSelectedImage(availableVariances[0].varianceImage[0]);
+      }
+    }
   };
-
+  
+  // Modify the handleColorChange function
   const handleColorChange = (color) => {
-    setSelectedColor(color);
-    updateSelectedVariance(selectedSize, color);
+    const availableVariances = product.variances.filter(
+      (variance) => variance.color.toLowerCase() === color.toLowerCase()
+    );
+  
+    if (availableVariances.length > 0) {
+      setSelectedColor(color);
+      
+      if (selectedSize) {
+        const matchingVariance = availableVariances.find(
+          (variance) => variance.size === selectedSize
+        );
+        
+        if (matchingVariance) {
+          setSelectedVariance(matchingVariance);
+          setCurrentImages(matchingVariance.varianceImage);
+          setSelectedImage(matchingVariance.varianceImage[0]);
+        } else {
+          setSelectedSize(availableVariances[0].size);
+          setSelectedVariance(availableVariances[0]);
+          setCurrentImages(availableVariances[0].varianceImage);
+          setSelectedImage(availableVariances[0].varianceImage[0]);
+        }
+      } else {
+        setSelectedSize(availableVariances[0].size);
+        setSelectedVariance(availableVariances[0]);
+        setCurrentImages(availableVariances[0].varianceImage);
+        setSelectedImage(availableVariances[0].varianceImage[0]);
+      }
+    }
   };
+  
+  // Update the initial setup in useEffect
+  useEffect(() => {
+    if (product && product.variances && product.variances.length > 0) {
+      const defaultVariance = product.variances[0];
+      setSelectedSize(defaultVariance.size);
+      setSelectedColor(defaultVariance.color);
+      setSelectedVariance(defaultVariance);
+      setCurrentImages(defaultVariance.varianceImage);
+      setSelectedImage(defaultVariance.varianceImage[0]);
+    } else {
+      // Fallback to main product images if no variances
+      setCurrentImages(product?.productImage || []);
+      setSelectedImage(product?.productImage?.[0] || "/placeholder.svg");
+    }
+  }, [product]);
+  
+  
 
   // Function to update selected variance based on size and color
   const updateSelectedVariance = (size, color) => {
     const selected = product?.variances?.find(
-      (variance) => variance.size === size && variance.color === color
+      (variance) => variance.size === size && variance.color.toLowerCase() === color.toLowerCase()
     );
-
+  
     if (selected) {
       setSelectedVariance(selected);
-
+  
       // Update the gallery and main image
       const images = selected.varianceImage || [];
       setSelectedImage(images[0] || "/placeholder.svg");
-      product.productImage = images; // Update product images dynamically
+      setProduct((prevProduct) => ({
+        ...prevProduct,
+        productImage: images.length > 0 ? images : prevProduct.productImage,
+      }));
+    } else {
+      // Handle case where no variance matches (optional)
+      setSelectedVariance(null);
+      setSelectedImage("/placeholder.svg");
     }
   };
+  
 
   const handleQuantityChange = (e) => {
     const newQuantity = parseInt(e.target.value);
 
     if (!selectedVariance || selectedVariance.quantity === 0) {
-      alert("This product is out of stock.");
+      toast.error("This product is out of stock.");
       setQuantity(0);
       return;
     }
   
   
     if (newQuantity > 5) {
-      alert("You can only add up to 5 of this product to your cart.");
+      toast("You can only add up to 5 of this product to your cart.", { icon: '⚠️' });
+
       setQuantity(5);
     } else if (newQuantity > selectedVariance.quantity) {
-      alert(`Only ${selectedVariance.quantity} items are available in stock.`);
+      toast(`Only ${selectedVariance.quantity} items are available in stock.`, { icon: '⚠️' });
+
       setQuantity(selectedVariance.quantity);
     } else if (newQuantity < 1) {
       setQuantity(1); // Minimum quantity is 1
@@ -160,7 +370,8 @@ const ProductDetails = () => {
   
   const handleAddToCart = () => {
     if (quantity > 5) {
-      alert("You can only add up to 5 of this product to your cart.");
+      toast("You can only add up to 5 of this product to your cart.", { icon: '⚠️' });
+
       setQuantity(5);
       return;
     }
@@ -173,55 +384,62 @@ const ProductDetails = () => {
   };
   
   const addToCart = async () => {
-  try {
-    if (!selectedVariance) {
-      alert("Please select a valid size and color.");
-      return;
+    try {
+      if (!selectedVariance) {
+        toast.error("Please select a valid size and color.");
+        return;
+      }
+  
+      const availableQuantity = selectedVariance.quantity;
+  
+      if (quantity > availableQuantity) {
+        toast(`Only ${availableQuantity} items are available in stock.`, { icon: '⚠️' });
+        setQuantity(availableQuantity);
+        return;
+      }
+  
+      if (quantity > 5) {
+        toast("You can only add up to 5 of this product to your cart.", { icon: '⚠️' });
+        setQuantity(5);
+        return;
+      }
+  
+      // Calculate the offer price
+      const basePrice = selectedVariance ? selectedVariance.price : product.price;
+      const maxDiscount = product.bestOffer ? product.bestOffer.discountPercentage : 0;
+      const discountAmount = (basePrice * maxDiscount) / 100;
+      const offerPrice = basePrice - discountAmount;
+  
+      const payload = {
+        userId: user.id || user._id,
+        productId: product._id,
+        productName: product.title,
+        availableQuantity,
+        variance: {
+          size: selectedVariance.size,
+          color: selectedVariance.color,
+          image: selectedVariance.varianceImage[0],
+        },
+        quantity,
+        image: selectedVariance.varianceImage[0],
+        price: basePrice,  // Original price
+        offerPrice,        // Discounted price to be added to the cart
+      };
+  
+      console.log("Payload sent to /cartadd:", payload);
+  
+      const response = await axios.post("/cartadd", payload);
+  
+      if (response.status === 200) {
+        console.log("Product added to cart successfully:", response.data);
+        toast.success("Product added to cart!");
+      }
+    } catch (error) {
+      console.error("Error adding product to cart:", error);
+      toast.error("Failed to add product to cart. Please try again.");
     }
-
-    const availableQuantity = selectedVariance.quantity;
-
-    if (quantity > availableQuantity) {
-      alert(`Only ${availableQuantity} items are available in stock.`);
-      setQuantity(availableQuantity);
-      return;
-    }
-
-    if (quantity > 5) {
-      alert("You can only add up to 5 of this product to your cart.");
-      setQuantity(5);
-      return;
-    }
-
-    // Fetch current cart items to check for existing product
-    
-
-    const payload = {
-      userId: user.id || user._id,
-      productId: product._id,
-      productName: product.title,
-      availableQuantity,
-      variance: {
-        size: selectedVariance.size,
-        color: selectedVariance.color,
-      },
-      quantity,
-      image: selectedVariance.varianceImage?.[0] || product.productImage?.[0] || "",
-    };
-
-    console.log("Payload sent to /cartadd:", payload);
-
-    const response = await axios.post("/cartadd", payload);
-
-    if (response.status === 200) {
-      console.log("Product added to cart successfully:", response.data);
-      alert("Product added to cart!");
-    }
-  } catch (error) {
-    console.error("Error adding product to cart:", error);
-    alert("Failed to add product to cart. Please try again.");
-  }
-};
+  };
+  
 
   
 
@@ -238,6 +456,11 @@ const ProductDetails = () => {
     return <div>Loading...</div>;
   }
 
+  
+  
+
+
+
   return (
     <>
       <Navbar />
@@ -246,30 +469,29 @@ const ProductDetails = () => {
         <div className="flex flex-col md:flex-row -mx-4">
           {/* Left Section: Image Gallery */}
           <div className="md:flex-1 px-4 flex">
-            <div className="flex flex-col space-y-2 mr-4">
-              {product.productImage?.map((image, index) => (
-                <img
-                  key={index}
-                  src={image}
-                  alt={`Product Image ${index + 1}`}
-                  className={`w-20 h-20 object-cover cursor-pointer rounded ${
-                    selectedImage === image
-                      ? "border-2 border-gray-900"
-                      : "border"
-                  }`}
-                  onClick={() => setSelectedImage(image)}
-                />
-              ))}
-            </div>
+  <div className="flex flex-col space-y-2 mr-4">
+    {currentImages.map((image, index) => (
+      <img
+        key={index}
+        src={image}
+        alt={`Product Image ${index + 1}`}
+        className={`w-20 h-20 object-cover cursor-pointer rounded ${
+          selectedImage === image ? "border-2 border-gray-900" : "border"
+        }`}
+        onClick={() => setSelectedImage(image)}
+      />
+    ))}
+  </div>
 
-            <div className="h-[460px] w-[460px] rounded-lg bg-gray-300 relative group overflow-hidden">
-              <img
-                className="w-full h-full object-cover transform group-hover:scale-150 transition-transform duration-500 ease-in-out"
-                src={selectedImage || "/placeholder.svg"}
-                alt="Selected Product"
-              />
-            </div>
-          </div>
+  <div className="h-[460px] w-[460px] rounded-lg bg-gray-300 relative group overflow-hidden">
+    <img
+      className="w-full h-full object-cover transform group-hover:scale-150 transition-transform duration-500 ease-in-out"
+      src={selectedImage || "/placeholder.svg"}
+      alt="Selected Product"
+    />
+  </div>
+</div>
+
 
           {/* Right Section: Product Info */}
           <div className="md:flex-1 px-4">
@@ -301,21 +523,39 @@ const ProductDetails = () => {
             </div>
 
             <div className="flex items-center mb-4">
-              <span className="font-bold text-3xl">
+              <span className="font-bold text-3xl text-green-600">
+                ₹{discountedPrice.toFixed(2)}
+              </span>
+              <span className="ml-3 text-2xl text-gray-500 line-through">
                 ₹{selectedVariance ? selectedVariance.price : product.price}
               </span>
-              <span className="ml-3 text-3xl">
-                <del>₹700</del>
-              </span>
-              <span className="text-gray-600 ml-2">
-                {selectedVariance.quantity > 0 ? "In stock" : "Out of stock"}
-              </span>
+              {discount > 0 && (
+                <span className="ml-3 text-lg text-red-500 font-semibold">
+                  {discount}% OFF
+                </span>
+              )}
+            </div>
+            <div className="text-sm text-gray-600 mb-4">
+              {discount > 0 && (
+                <p>
+                  You save: ₹
+                  {(
+                    (selectedVariance ? selectedVariance.price : product.price) -
+                    discountedPrice
+                  ).toFixed(2)}
+                </p>
+              )}
+              <p>
+                {selectedVariance && selectedVariance.quantity > 0
+                  ? `In stock (${selectedVariance.quantity} available)`
+                  : "Out of stock"}
+              </p>
             </div>
 
-            {/* Variance Selection */}
+
             {product.variances && product.variances.length > 0 && (
               <div className="mb-4">
-                {/* Conditionally display size if available in any variance */}
+              
                 {product.variances.some((variance) => variance.size) && (
                   <div>
                     <span className="font-bold text-gray-700">
@@ -342,7 +582,7 @@ const ProductDetails = () => {
                   </div>
                 )}
 
-                {/* Conditionally display color if available in any variance */}
+               
                 {product.variances.some((variance) => variance.color) && (
                   <div className="mt-4">
                     <span className="font-bold text-gray-700">
@@ -352,7 +592,7 @@ const ProductDetails = () => {
                       {product.variances
                         .filter(
                           (value, index, self) =>
-                            // Filter out duplicate colors (case-insensitive)
+                           
                             index ===
                             self.findIndex(
                               (t) =>
@@ -373,7 +613,7 @@ const ProductDetails = () => {
                                 style={{
                                   backgroundColor: variance.color.toLowerCase(),
                                 }}
-                                // Make sure variance.color is a valid CSS color
+                                
                                 onClick={() =>
                                   handleColorChange(variance.color)
                                 }
@@ -557,8 +797,10 @@ const ProductDetails = () => {
           </div>
         )}
       </div>
+      <Toaster position="top-right" />
     </>
   );
+
 };
 
 export default ProductDetails;

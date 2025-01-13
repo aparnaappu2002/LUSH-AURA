@@ -17,8 +17,11 @@ const LayoutWrapper = ({ children }) => {
   }
   return <Layout>{children}</Layout>;
 };
-import ProtectRoute from "../../protectroute/Protectroute";
+import ProtectRoute from "../../protectroute/ProtectRoute";
 import OrderDetails from "../admin/OrderDetails";
+import CouponPage from "../admin/CouponPage";
+import OfferPage from "../admin/OfferPage";
+import SalesReport from "../admin/SalesReport";
 
 function Admin() {
   return (
@@ -31,6 +34,9 @@ function Admin() {
         <Route path="/productlist" element={<ProtectRoute> <ProductList /> </ProtectRoute> } />
         <Route path="/addproduct" element={<ProtectRoute>  <AddProduct /> </ProtectRoute>}/>
         <Route path="/orders" element={<ProtectRoute>  <OrderDetails/> </ProtectRoute>}/>
+        <Route path="/coupons" element={<ProtectRoute>  <CouponPage/> </ProtectRoute>}/>
+        <Route path="/offers" element={<ProtectRoute>  <OfferPage/> </ProtectRoute>}/>
+        <Route path="/sales" element={<ProtectRoute>  <SalesReport/> </ProtectRoute>}/>
       </Route>
       </Routes>
     

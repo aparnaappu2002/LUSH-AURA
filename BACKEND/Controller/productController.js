@@ -1,5 +1,6 @@
 const Products = require('../Models/productSchema')
 const Category = require("../Models/categorySchema")
+const Offer = require("../Models/offerSchema")
 const fs = require('fs');
 const path = require('path');
 
@@ -218,22 +219,57 @@ const showProductListed = async (req, res) => {
 const showProductone = async (req, res) => {
   try {
     const productId = req.params.id;
+    console.log("Fetching product with ID:", productId);
 
-    console.log("id:",productId)
-
-    // Find product by ID
-    const product = await Products.findById(productId);
+    const product = await Products.findById(productId).populate('categoryId');
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    res.status(200).json(product);
+    const productOffers = await Offer.find({
+      products: productId,
+      status: 'active',
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() },
+    });
+    
+    const categoryOffers = await Offer.find({
+      category: product.categoryId._id,
+      status: 'active',
+      startDate: { $lte: new Date() },
+      endDate: { $gte: new Date() },
+    });
+    
+    console.log('Fetched Product Offers:', productOffers);
+    console.log('Fetched Category Offers:', categoryOffers);
+    
+
+    const combinedOffers = [...productOffers, ...categoryOffers];
+
+    let bestOffer = null;
+    let finalPrice = product.price;
+
+    if (combinedOffers.length > 0) {
+      bestOffer = combinedOffers.reduce((best, current) =>
+        current.discountPercentage > best.discountPercentage ? current : best
+      , combinedOffers[0]);
+      console.log("Bestoffer:",bestOffer)
+
+      finalPrice -= (bestOffer.discountPercentage / 100) * finalPrice;
+    }
+
+    res.status(200).json({ ...product.toObject(), finalPrice, bestOffer });
   } catch (error) {
-    console.error('Error fetching product:', error);
-    res.status(500).json({ message: 'Server error' });
+    console.error('Error fetching product details:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
+
+
+
+
+
 
 
 const relatedProducts = async (req, res) => {

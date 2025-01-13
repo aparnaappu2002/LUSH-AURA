@@ -10,6 +10,8 @@ const CartPage = () => {
   const [totalPrice, setTotalPrice] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [itemToRemove, setItemToRemove] = useState(null);
   const navigate= useNavigate()
   const user = useSelector((state) => state.user.user);
 
@@ -75,22 +77,31 @@ const CartPage = () => {
 
   const removeFromCart = async (productId, variance) => {
     try {
-      const userId = user.id || user._id; // Assuming `user.id` contains the current user's ID
-      const payload = {
-        userId,
-        productId,
-        variance, // Pass variance details (e.g., size and color)
-      };
-      console.log("payload:",payload)
-  
-      await axios.post(`/removecart`, payload); // Use POST to send a body
-  
-      fetchCartItems(); // Refresh the cart after removal
+        const userId = user.id || user._id; // Ensure userId is correct
+        const payload = {
+            userId,
+            productId,
+            variance, // Pass variance details (size and/or color)
+        };
+
+        // Debugging: log payload to verify its structure
+        console.log("Payload being sent to backend:", payload);
+
+        // Validate that at least one variance detail is provided
+        if (!variance || (!variance.size && !variance.color)) {
+            throw new Error("Invalid variance details provided");
+        }
+
+        await axios.post(`/removecart`, payload); // Use POST to send a body
+
+        fetchCartItems(); // Refresh the cart after removal
     } catch (error) {
-      console.error('Error removing item from cart:', error);
-      setError('Failed to remove item from cart. Please try again.');
+        console.error("Error removing item from cart:", error);
+        setError("Failed to remove item from cart. Please try again.");
     }
-  };
+};
+
+
   
 
   const updateQuantity = async (productId, variance, newQuantity) => {
@@ -177,6 +188,25 @@ const CartPage = () => {
     console.log("Proceeding to payment");
     navigate("/checkout");
   };
+
+  const handleRemoveClick = (item) => {
+    setItemToRemove(item);
+    setShowConfirmModal(true);
+  };
+
+  const confirmRemove = () => {
+    if (itemToRemove) {
+      removeFromCart(itemToRemove.id, itemToRemove.variance);
+    }
+    setShowConfirmModal(false);
+    setItemToRemove(null);
+  };
+
+  const cancelRemove = () => {
+    setShowConfirmModal(false);
+    setItemToRemove(null);
+  };
+
   
 
   if (isLoading) {
@@ -265,7 +295,7 @@ const CartPage = () => {
                           <span className="text-sm">Wishlist</span>
                         </button>
                         <button
-                          onClick={() => removeFromCart(item.id,item.variance)}
+                          onClick={() => handleRemoveClick(item)}
                           className="flex items-center text-red-500 hover:text-red-600 transition-colors duration-300"
                           aria-label={`Remove ${item.name} from cart`}
                         >
@@ -295,6 +325,29 @@ const CartPage = () => {
           </div>
         )}
       </div>
+      {/* Confirmation Modal */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-semibold mb-4">Confirm Removal</h3>
+            <p className="mb-6">Are you sure you want to remove this item from your cart?</p>
+            <div className="flex justify-end space-x-4">
+              <button
+                onClick={cancelRemove}
+                className="px-4 py-2 bg-pink-200 text-gray-800 rounded hover:bg-pink-300 transition-colors duration-200"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmRemove}
+                className="px-4 py-2 bg-pink-500 text-white rounded hover:bg-pink-600 transition-colors duration-200"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

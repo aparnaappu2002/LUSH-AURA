@@ -22,7 +22,9 @@ const orderItemSchema = new mongoose.Schema({
         varianceImage: {
             type: [String],
             required: true
-        }
+        },
+        
+        
     },
     quantity: {
         type: Number,
@@ -36,6 +38,11 @@ const orderItemSchema = new mongoose.Schema({
     subtotal: {
         type: Number,
         required: true
+    },
+    productStatus:{
+        type: String,
+        enum: ["Placed", "Processing", "Shipped", "Delivered", "Cancelled","Returned","Return Requested","Return Failed"],
+        default: "Placed"
     }
 });
 
@@ -63,9 +70,14 @@ const orderSchema = new mongoose.Schema({
     },
     orderStatus: {
         type: String,
-        enum: ["Placed", "Processing", "Shipped", "Delivered", "Cancelled"],
+        enum: ["Placed", "Processing", "Shipped", "Delivered", "Cancelled","Returned",],
         default: "Placed"
     },
+    razorpayId: {
+        type: String,
+        required: false 
+    },
+
     totalItems: {
         type: Number,
         required: true
@@ -74,14 +86,40 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    
+
     orderDate: {
+        
         type: Date,
         default: Date.now
     },
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+    returnRequest: {
+        isRequested: {
+            type: Boolean,
+            default: false
+        },
+        reason: {
+            type: String,
+            required: function() { return this.returnRequest.isRequested; },
+            default: ""
+        },
+        status: {
+            type: String,
+            enum: ["Pending", "Accepted", "Rejected"],
+            default: "Pending"
+        },
+        requestDate: {
+            type: Date
+        },
+        resolutionDate: {
+            type: Date
+        }
     }
+
 });
 
 const Order = mongoose.model("orders", orderSchema);

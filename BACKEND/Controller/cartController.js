@@ -5,7 +5,8 @@ const Product = require("../Models/productSchema");
 
 const cartAdd = async (req, res) => {
   try {
-    const { userId, productId, productName, variance, quantity } = req.body;
+    const { userId, productId, productName, variance, quantity, offerPrice } = req.body;
+    console.log("Request body:", req.body);
 
     // Validate required fields
     if (!userId || !productId || !quantity || !productName || !variance) {
@@ -26,12 +27,10 @@ const cartAdd = async (req, res) => {
     );
 
     if (!varianceExists) {
-      return res
-        .status(404)
-        .json({ error: "Selected variance is not available" });
+      return res.status(404).json({ error: "Selected variance is not available" });
     }
 
-    const availableQuantity = varianceExists.quantity; // Fetching available quantity from product variance
+    const availableQuantity = varianceExists.quantity;
 
     // Check if the requested quantity exceeds the available quantity
     if (quantity > availableQuantity) {
@@ -40,18 +39,17 @@ const cartAdd = async (req, res) => {
       });
     }
 
-    const selectedImage =
-      varianceExists.varianceImage?.[0] || product.productImage?.[0] || "";
+    const selectedImage = varianceExists.varianceImage?.[0]; // Only use variance-specific image
+    console.log("Selected image:", selectedImage);
 
     if (!selectedImage) {
-      console.warn(
-        `No image found for product ${productId} with variance ${JSON.stringify(
-          variance
-        )}`
-      );
+      return res.status(400).json({
+        error: "No image available for the selected product variance.",
+      });
     }
 
-    const itemPrice = varianceExists.price || product.price;
+    // Use offerPrice if available, otherwise use the regular price
+    const itemPrice = offerPrice || varianceExists.price || product.price;
     const itemSubtotal = itemPrice * quantity;
 
     // Fetch or create the user's cart
@@ -78,7 +76,6 @@ const cartAdd = async (req, res) => {
       const existingItem = cart.items[existingItemIndex];
       const newQuantity = existingItem.quantity + quantity;
 
-      // Ensure new quantity does not exceed available quantity
       if (newQuantity > availableQuantity) {
         return res.status(400).json({
           error: `Only ${
@@ -97,13 +94,13 @@ const cartAdd = async (req, res) => {
         variance: {
           size: variance.size,
           color: variance.color,
-          varianceImage: varianceExists.varianceImage, // Preserve variance-specific image
+          varianceImage: varianceExists.varianceImage?.[0],
         },
         quantity,
         price: itemPrice,
         image: selectedImage,
         subtotal: itemSubtotal,
-        availableQuantity
+        availableQuantity,
       });
     }
 
@@ -123,6 +120,8 @@ const cartAdd = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+
 
 
 
@@ -155,11 +154,8 @@ const getCartItems = async (req, res) => {
       const product = item.productId; // Populated product data
       const productName = item.productName || product?.name || "Unknown Product";
 
-      const varianceImage = product?.variances?.find(
-        (variance) =>
-          variance.size === item.variance.size &&
-          variance.color.toLowerCase() === item.variance.color.toLowerCase()
-      )?.varianceImage[0] || product?.image || "";
+      const varianceImage = item.variance.varianceImage?.[0] || "";
+
 
       return {
         ...item.toObject(),
@@ -183,51 +179,54 @@ const getCartItems = async (req, res) => {
 
 
 
-  const removeCartItem = async (req, res) => {
-    try {
+const removeCartItem = async (req, res) => {
+  try {
       const { userId, productId, variance } = req.body;
-  
+
+      console.log("Received Payload:", req.body);
+
       if (!userId || !productId || !variance) {
-        return res.status(400).json({ error: "Missing required fields" });
+          return res.status(400).json({ error: "Missing required fields" });
       }
-  
+
       // Find the user's cart
       const cart = await Cart.findOne({ userId });
       if (!cart) {
-        return res.status(404).json({ error: "Cart not found for the user" });
+          return res.status(404).json({ error: "Cart not found for the user" });
       }
-  
-      // Find the item in the cart
-      const itemIndex = cart.items.findIndex(
-        (item) =>
-          item.productId.toString() === productId &&
-          item.variance.size === variance.size &&
-          item.variance.color.toLowerCase() === variance.color.toLowerCase()
-      );
-  
+
+      // Flexible matching logic for items with optional size or color
+      const itemIndex = cart.items.findIndex((item) => {
+          const sizeMatch = !variance.size || item.variance.size === variance.size;
+          const colorMatch = !variance.color || item.variance.color?.toLowerCase() === variance.color?.toLowerCase();
+          return item.productId.toString() === productId && sizeMatch && colorMatch;
+      });
+
       if (itemIndex === -1) {
-        return res.status(404).json({ error: "Item not found in the cart" });
+          return res.status(404).json({ error: "Item not found in the cart" });
       }
-  
+
       // Remove the item and update totals
       const removedItem = cart.items[itemIndex];
       cart.items.splice(itemIndex, 1);
-  
+
       // Update totals
       cart.totalItems = cart.items.reduce((acc, item) => acc + item.quantity, 0);
       cart.totalPrice = cart.items.reduce((acc, item) => acc + item.subtotal, 0);
-  
+
       await cart.save();
-  
+
       res.status(200).json({
-        message: "Item removed from cart successfully",
-        cart,
+          message: "Item removed from cart successfully",
+          cart,
       });
-    } catch (error) {
+  } catch (error) {
       console.error("Error removing item from cart:", error);
       res.status(500).json({ error: "Internal server error" });
-    }
-  };
+  }
+};
+
+
   
   
   const updateCartQuantity = async (req, res) => {
@@ -328,6 +327,7 @@ const getCartItems = async (req, res) => {
   
   
   
+
   
   
   
@@ -338,5 +338,6 @@ const getCartItems = async (req, res) => {
     getCartItems,
     removeCartItem,
     updateCartQuantity,
-    removeCart
+    removeCart,
+    
   }

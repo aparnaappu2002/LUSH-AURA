@@ -14,6 +14,8 @@ import CartPage from "../user/CartPage"
 import Checkout from "../user/CheckoutPage"
 import Navbar from "../shared/Navbar"
 import OrderListPage from "../account/adress/orderList"
+import WishlistPage from "../user/WishlistPage"
+import WalletPage from "../account/WalletPage"
 
 
 function User()
@@ -41,6 +43,8 @@ function User()
             <Route path="/profile" element={<Profile/>}/>
             <Route path="/address" element={<MyAddressPage/>}/>
              <Route path="/orderlist" element={<OrderListPage/>}/> 
+             <Route path="/wishlist" element={<WishlistPage/>}/> 
+             <Route path="/wallet" element={<WalletPage/>}/> 
             </Route>
             
             

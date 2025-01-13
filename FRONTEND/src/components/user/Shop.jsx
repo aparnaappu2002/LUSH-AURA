@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
 import axios from '../../axios/userAxios';
 import { Star, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navbar from '../shared/Navbar';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../shared/BreadCrumbs';
+import { motion } from 'framer-motion';
+import { FaUser } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 const ProductCard = ({ product }) => {
   const [isLiked, setIsLiked] = useState(false);
@@ -82,6 +86,7 @@ const Shop = () => {
   const [sortOption, setSortOption] = useState('default');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const user = useSelector((state) => state.user.user);
   const productsPerPage = 8;
 
   useEffect(() => {
@@ -106,7 +111,13 @@ const Shop = () => {
           search: searchQuery || '',       // Send search only if not empty
         },
       });
-      setProducts(Array.isArray(response.data.products) ? response.data.products : []);
+      let fetchedProducts = Array.isArray(response.data.products) ? response.data.products : [];
+    
+    // Apply sorting based on current sortOption
+    fetchedProducts = sortProducts(fetchedProducts, sortOption);
+
+    setProducts(fetchedProducts);
+
     } catch (error) {
       console.error('Error fetching products:', error);
     }
@@ -122,23 +133,29 @@ const Shop = () => {
     setCurrentPage(1); // Reset to the first page on category change
   };
 
+  const sortProducts = (productsToSort, sortOption) => {
+    const sortedProducts = [...productsToSort];
+    if (sortOption === 'priceLowToHigh') {
+      sortedProducts.sort((a, b) => a.price - b.price);
+    } else if (sortOption === 'priceHighToLow') {
+      sortedProducts.sort((a, b) => b.price - a.price);
+    } else if (sortOption === 'a-z') {
+      sortedProducts.sort((a, b) => a.title.localeCompare(b.title));
+    } else if (sortOption === 'z-a') {
+      sortedProducts.sort((a, b) => b.title.localeCompare(a.title));
+    }
+    return sortedProducts;
+  };
+  
+
   const handleSortChange = (e) => {
     const option = e.target.value;
     setSortOption(option);
-
-    const sortedProducts = [...products];
-    if (option === 'priceLowToHigh') {
-      sortedProducts.sort((a, b) => a.price - b.price);
-    } else if (option === 'priceHighToLow') {
-      sortedProducts.sort((a, b) => b.price - a.price);
-    } else if (option === 'a-z') {
-      sortedProducts.sort((a, b) => a.title.localeCompare(b.title));
-    } else if (option === 'z-a') {
-      sortedProducts.sort((a, b) => b.title.localeCompare(a.title));
-    }
-
-    setProducts(sortedProducts);
+  
+    // Sort products locally based on the selected option
+    setProducts(sortProducts(products, option));
   };
+  
 
   const indexOfLastProduct = currentPage * productsPerPage;
   const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
@@ -152,6 +169,36 @@ const Shop = () => {
   const prevPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
   };
+
+  if (!user) {
+    return (
+      <>
+      <Navbar/>
+      
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-lg p-8 text-center shadow-lg max-w-md w-full"
+        >
+          <div className="mb-6">
+            <FaUser className="w-16 h-16 mx-auto text-gray-400" />
+          </div>
+          <h2 className="text-2xl font-semibold mb-4">Please Log In</h2>
+          <p className="text-gray-600 mb-6">
+            You need to be logged in to view and manage your profile.
+          </p>
+          <Link
+            to="/login"
+            className="inline-block bg-pink-600 text-white px-6 py-3 rounded-lg hover:bg-pink-700 transition-colors"
+          >
+            Log In Now
+          </Link>
+        </motion.div>
+      </div>
+      </>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from '../../axios/adminAxios';
 import { PlusIcon, PencilIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 
 export default function CategoryManagement() {
   const [categories, setCategories] = useState([]);
@@ -10,6 +11,16 @@ export default function CategoryManagement() {
   const [editNameCategory, setEditNameCategory] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [fetch, setFetch] = useState(false);
+  const [isOfferModalOpen, setIsOfferModalOpen] = useState(false);
+  
+  const [currentOffer, setCurrentOffer] = useState({
+    offerName: '',
+    description: '',
+    discountPercentage: 0,
+    startDate: '',
+    endDate: '',
+    status: 'active'
+  });
 
   
   useEffect(() => {
@@ -83,7 +94,37 @@ export default function CategoryManagement() {
     }
   };
 
+  const handleAddOffer = (categoryId) => {
+    setSelectedId(categoryId);
+    setCurrentOffer({
+      offerName: '',
+      description: '',
+      discountPercentage: 0,
+      startDate: '',
+      endDate: '',
+      status: 'active'
+    });
+    setIsOfferModalOpen(true);
+  };
+
+  const handleSaveOffer = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post(`/addoffercategory`, {
+        ...currentOffer,
+        category: selectedId
+      });
+      toast.success('Offer added successfully');
+      setIsOfferModalOpen(false);
+      setFetch(!fetch);
+    } catch (error) {
+      console.error('Error adding offer:', error);
+      toast.error('Failed to add offer');
+    }
+  };
+
   return (
+    <>
     <div className="container mx-auto p-6">
       <h1 className="text-3xl font-bold mb-6">Category Management</h1>
 
@@ -106,7 +147,7 @@ export default function CategoryManagement() {
           />
           <button
   type="submit"
-  className="bg-gradient-to-r from-blue-500 to-blue-700 hover:from-blue-600 hover:to-blue-800 
+  className="bg-gradient-to-r from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 
   text-white font-bold py-2 px-6 rounded-lg shadow-lg transform transition-all 
   hover:scale-105 active:scale-95 flex items-center gap-2"
 >
@@ -124,6 +165,7 @@ export default function CategoryManagement() {
             <th className="p-4 text-left">Name</th>
             <th className="p-4 text-left">Status</th>
             <th className="p-4 text-left">Actions</th>
+            <th className="p-4 text-left">Offers</th>
           </tr>
         </thead>
         <tbody>
@@ -141,8 +183,8 @@ export default function CategoryManagement() {
       onChange={() => handleStatus(category._id)}
     />
     <div
-      className={`w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-green-500
-      peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-green-400 
+      className={`w-11 h-6 bg-gray-300 rounded-full peer-checked:bg-pink-500
+      peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-pink-400 
       transition-all duration-300`}
     ></div>
     <span
@@ -162,11 +204,20 @@ export default function CategoryManagement() {
                     className={`${
                       category.status === 'inactive'
                         ? 'text-gray-400 cursor-not-allowed'
-                        : 'text-indigo-600 hover:text-indigo-900'
+                        : 'text-pink-600 hover:text-pink-900'
                     }`}
                     disabled={category.status === 'inactive'}
                   >
                     <PencilIcon className="w-5 h-5" />
+                  </button>
+                </td>
+                <td className="p-4">
+                  <button
+                    onClick={() => handleAddOffer(category._id)}
+                    className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-4 rounded-full text-xs flex items-center"
+                  >
+                    <PlusIcon className="w-4 h-4 mr-1" />
+                    Add Offer
                   </button>
                 </td>
               </tr>
@@ -196,7 +247,7 @@ export default function CategoryManagement() {
               />
               <button
                 type="submit"
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                className="bg-pink-500 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded"
               >
                 Update Category
               </button>
@@ -204,6 +255,95 @@ export default function CategoryManagement() {
           </div>
         </div>
       )}
+
+{isOfferModalOpen && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-xl font-bold mb-4">Add Offer to Category</h2>
+            <form onSubmit={handleSaveOffer} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Offer Name</label>
+                <input
+                  type="text"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  value={currentOffer.offerName}
+                  onChange={(e) => setCurrentOffer({...currentOffer, offerName: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Description</label>
+                <textarea
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  value={currentOffer.description}
+                  onChange={(e) => setCurrentOffer({...currentOffer, description: e.target.value})}
+                ></textarea>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Discount Percentage</label>
+                <input
+                  type="number"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  value={currentOffer.discountPercentage}
+                  onChange={(e) => setCurrentOffer({...currentOffer, discountPercentage: e.target.value})}
+                  min="0"
+                  max="100"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Start Date</label>
+                <input
+                  type="date"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  value={currentOffer.startDate}
+                  onChange={(e) => setCurrentOffer({...currentOffer, startDate: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">End Date</label>
+                <input
+                  type="date"
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  value={currentOffer.endDate}
+                  onChange={(e) => setCurrentOffer({...currentOffer, endDate: e.target.value})}
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Status</label>
+                <select
+                  className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm p-2"
+                  value={currentOffer.status}
+                  onChange={(e) => setCurrentOffer({...currentOffer, status: e.target.value})}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div className="flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setIsOfferModalOpen(false)}
+                  className="bg-gray-300 hover:bg-gray-400 text-black font-bold py-2 px-4 rounded"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="bg-pink-500 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Add Offer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
+          <Toaster position="top-right" />
+          </>
   );
 }
