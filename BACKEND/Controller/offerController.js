@@ -263,14 +263,22 @@ const offers = async (req, res) => {
             
             // Find applicable offers for this product
             const applicableOffers = offers.filter(offer => {
-                const productMatch = offer.products && 
-                    offer.products.some(p => p._id.toString() === productId);
-                const categoryMatch = offer.category && 
-                    product.categoryId && 
-                    offer.category._id.toString() === product.categoryId._id.toString();
-                
-                return productMatch || categoryMatch;
-            });
+              // Check if the offer is linked to the product
+              const productMatch = offer.products && 
+                  offer.products.some(p => p._id.toString() === productId);
+              
+              // Check if the offer is linked to the product category
+              const categoryMatch = offer.category && 
+                  product.categoryId && 
+                  offer.category._id.toString() === product.categoryId._id.toString();
+          
+              // Only return the offer if it matches either product or category
+              return productMatch || categoryMatch;
+          });
+          
+          console.log(`Applicable offers for product ${productId}:`, applicableOffers);
+          
+          
 
             if (applicableOffers.length > 0) {
                 // Find the best offer (highest discount)
@@ -279,34 +287,44 @@ const offers = async (req, res) => {
                 );
 
                 // Apply the best discount to the base product price
-                const baseDiscountedPrice = product.price * (1 - bestOffer.discountPercentage / 100);
-                
-                // Calculate discounted prices for each variance
-                const varianceDiscounts = {};
-                product.variances.forEach(variance => {
-                    const variancePrice = variance.price;
-                    const varianceDiscountedPrice = variancePrice * (1 - bestOffer.discountPercentage / 100);
-                    varianceDiscounts[variance._id.toString()] = {
-                        originalPrice: variancePrice,
-                        discountedPrice: varianceDiscountedPrice,
-                        savings: variancePrice - varianceDiscountedPrice
-                    };
-                });
+                // Apply the best discount to the base product price
+const baseDiscountedPrice = product.price * (1 - bestOffer.discountPercentage / 100);
 
-                productOffers[productId] = {
-                    offerId: bestOffer._id,
-                    offerName: bestOffer.offerName,
-                    offerType: bestOffer.category ? 'category' : 'product',
-                    discountPercentage: bestOffer.discountPercentage,
-                    basePrice: {
-                        original: product.price,
-                        discounted: baseDiscountedPrice,
-                        savings: product.price - baseDiscountedPrice
-                    },
-                    variances: varianceDiscounts,
-                    categoryId: product.categoryId?._id,
-                    categoryName: product.categoryId?.name
-                };
+// Calculate discounted prices for each variance
+const varianceDiscounts = {};
+product.variances.forEach(variance => {
+    const variancePrice = variance.price;
+    const varianceDiscountedPrice = variancePrice * (1 - bestOffer.discountPercentage / 100);
+    varianceDiscounts[variance._id.toString()] = {
+        originalPrice: variancePrice,
+        discountedPrice: varianceDiscountedPrice,
+        savings: variancePrice - varianceDiscountedPrice
+    };
+});
+
+// Final product offer object
+productOffers[productId] = {
+  offerId: bestOffer._id,
+  offerName: bestOffer.offerName,
+  offerType: bestOffer.category ? 'category' : 'product',
+  discountPercentage: bestOffer.discountPercentage,
+  basePrice: {
+      original: product.price,
+      discounted: baseDiscountedPrice,
+      savings: product.price - baseDiscountedPrice,
+  },
+  variances: varianceDiscounts,
+  categoryId: product.categoryId?._id,
+  categoryName: product.categoryId?.categoryName,
+  appliedOffers: applicableOffers.map((offer) => ({
+      id: offer._id,
+      name: offer.offerName,
+      discountPercentage: offer.discountPercentage,
+      type: offer.category ? 'category' : 'product',
+  })),
+};
+
+
             }
         }
 

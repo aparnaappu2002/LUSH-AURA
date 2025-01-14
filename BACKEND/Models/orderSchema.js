@@ -86,6 +86,11 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
+    shippingCharge: {
+        type: Number,
+        default:50,
+        required:false
+    },
     
 
     orderDate: {

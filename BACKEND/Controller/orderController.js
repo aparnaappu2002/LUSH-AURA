@@ -25,7 +25,7 @@ const razorpay = new Razorpay({
 
 const addOrder = async (req, res) => {
   try {
-    const { userId, items, shippingAddress, paymentMethod, totalItems, totalPrice } = req.body;
+    const { userId, items, shippingAddress, paymentMethod, totalItems, totalPrice,shippingCharge  } = req.body;
 
     // Validate input
     if (!userId || !items || !shippingAddress || !paymentMethod || !totalItems || !totalPrice) {
@@ -74,16 +74,19 @@ const addOrder = async (req, res) => {
       await product.save();
     }
 
+    const finalPrice = totalPrice + shippingCharge;
+
     // Create the order
     const newOrder = new Order({
       userId,
       items,
       shippingAddress,
       paymentMethod,
-      paymentStatus: paymentMethod === "UPI" ? "Pending" : "Completed",
+      paymentStatus: paymentMethod === "UPI" ? "Completed" : "Pending",
       orderStatus: paymentMethod === "UPI" ? "Placed" : "Processing",
       totalItems,
-      totalPrice,
+      totalPrice:finalPrice,
+      shippingCharge,
     });
 
     let razorpayOrder = null;
@@ -91,7 +94,7 @@ const addOrder = async (req, res) => {
     if (paymentMethod === "UPI") {
       // Create a Razorpay order
       razorpayOrder = await razorpay.orders.create({
-        amount: totalPrice * 100, // Amount in paise
+        amount: finalPrice * 100, // Amount in paise
         currency: "INR",
         receipt: `receipt_${newOrder._id}`,
         payment_capture: 1,
@@ -945,7 +948,80 @@ const downloadReport = async (req, res) => {
   }
 };
 
+const failurePayment = async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status } = req.body;
 
+    if (!status || !["Pending", "Completed", "Failed"].includes(status)) {
+      return res.status(400).json({ message: "Invalid payment status." });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found." });
+    }
+
+    order.paymentStatus = status;
+    order.updatedAt = Date.now();
+
+    await order.save();
+
+    return res.status(200).json({ message: "Payment status updated successfully." });
+  } catch (error) {
+    console.error("Error updating payment status:", error);
+    res.status(500).json({ message: error.message || "Internal server error." });
+  }
+}
+
+
+const retryPayment = async (req, res) => {
+  const { orderId } = req.params;
+  const { 
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature 
+  } = req.body;
+  console.log("body:",req.body)
+
+  try {
+    const order = await Order.findById(orderId);
+    
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Verify Razorpay signature (implement your verification logic here)
+    const isValidPayment = true; // Replace with actual verification
+
+    if (isValidPayment) {
+      // Update order with new payment status and Razorpay ID
+      order.paymentStatus = "Completed";
+      order.razorpayId = razorpay_payment_id;
+      order.orderStatus = "Processing";
+      order.updatedAt = new Date();
+
+      await order.save();
+
+      res.json({
+        success: true,
+        message: "Payment completed successfully",
+        order
+      });
+    } else {
+      order.paymentStatus = "Failed";
+      await order.save();
+      
+      res.status(400).json({
+        success: false,
+        message: "Payment verification failed"
+      });
+    }
+  } catch (error) {
+    console.error("Error processing payment:", error);
+    res.status(500).json({ message: "Failed to process payment" });
+  }
+};
 
 
 
@@ -968,4 +1044,6 @@ module.exports ={
     verifyPayment,
     salesReport,
     downloadReport,
+    failurePayment,
+    retryPayment
 }

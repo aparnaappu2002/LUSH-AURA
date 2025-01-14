@@ -1,15 +1,15 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect } from "react";
 import { PlusIcon, XIcon, PencilIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, CheckCircleIcon, CopyIcon } from 'lucide-react';
-import axios from '../../axios/userAxios';
-import { useSelector } from 'react-redux';
-import { motion, AnimatePresence } from 'framer-motion';
-import Navbar from '../shared/Navbar';
-import { useNavigate } from 'react-router-dom';
+import axios from "../../axios/userAxios";
+import { useSelector } from "react-redux";
+import { motion, AnimatePresence } from "framer-motion";
+import Navbar from "../shared/Navbar";
+import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "react-hot-toast";
 
 const Checkout = () => {
-  const [selectedAddress, setSelectedAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('');
+  const [selectedAddress, setSelectedAddress] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [orderPlaced, setOrderPlaced] = useState(false);
   const [addresses, setAddresses] = useState([]);
   const [items, setItems] = useState([]);
@@ -19,22 +19,27 @@ const Checkout = () => {
   const [newAddressModalOpen, setNewAddressModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(3);
-  const [couponCode, setCouponCode] = useState('');
+  const [couponCode, setCouponCode] = useState("");
   const [availableCoupons, setAvailableCoupons] = useState([]);
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [isFirstOrder, setIsFirstOrder] = useState(false);
   const [discountAmount, setDiscountAmount] = useState(0);
   const [showCouponAnimation, setShowCouponAnimation] = useState(false);
   const [productOffers, setProductOffers] = useState({});
+  const [shippingCharge, setShippingCharge] = useState(50); // Example flat rate shipping charge
+
 
   
+
+  
+
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
   const userId = user.id || user._id;
 
   const fetchOrderHistory = useCallback(async () => {
     if (!userId) return;
-  
+
     try {
       const { data } = await axios.get(`/orders/${userId}`);
       console.log("Received data:", data);
@@ -52,8 +57,8 @@ const Checkout = () => {
         const { data } = await axios.get(`/showAddress/${userId}`);
         setAddresses(data.addresses || []);
       } catch (error) {
-        console.error('Error fetching addresses:', error);
-        toast.error('Failed to fetch addresses. Please try again.');
+        console.error("Error fetching addresses:", error);
+        toast.error("Failed to fetch addresses. Please try again.");
       }
     }
   }, [userId]);
@@ -63,64 +68,66 @@ const Checkout = () => {
       try {
         const { data } = await axios.get(`/cart/${userId}`);
         if (data.cart && Array.isArray(data.cart.items)) {
-          const updatedItems = data.cart.items.map(item => {
-            const price = item.variance?.price || item.price || 0;  // Default to 0 if undefined
-            const subtotal = price * (item.quantity || 0);          // Default quantity to 0 if undefined
-  
+          const updatedItems = data.cart.items.map((item) => {
+            const price = item.variance?.price || item.price || 0; // Default to 0 if undefined
+            const subtotal = price * (item.quantity || 0); // Default quantity to 0 if undefined
+
             return {
               ...item,
               price,
               subtotal,
             };
           });
-  
-          const totalPrice = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
-  
+
+          const totalPrice = updatedItems.reduce(
+            (sum, item) => sum + item.subtotal,
+            0
+          );
+
           setItems(updatedItems);
-          setTotalItems(data.cart.totalItems || 0);  // Default to 0 if undefined
+          setTotalItems(data.cart.totalItems || 0); // Default to 0 if undefined
           setTotalPrice(totalPrice);
         } else {
-          console.warn('Cart items are not in the expected format:', data.cart);
+          console.warn("Cart items are not in the expected format:", data.cart);
           setItems([]);
           setTotalItems(0);
           setTotalPrice(0);
         }
       } catch (error) {
-        console.error('Error fetching cart items:', error);
-        toast.error('Failed to fetch cart items. Please try again.');
+        console.error("Error fetching cart items:", error);
+        toast.error("Failed to fetch cart items. Please try again.");
         setItems([]);
         setTotalItems(0);
         setTotalPrice(0);
       }
     }
   }, [userId]);
-  
 
   const fetchAvailableCoupons = async () => {
     try {
-      const response = await axios.get('/coupons');
+      const response = await axios.get("/coupons");
       console.log("Fetched Coupons:", response.data);
-  
+
       if (!Array.isArray(response.data)) {
         console.error("Unexpected coupons data structure:", response.data);
         toast.error("Failed to fetch coupons. Please try again.");
         return;
       }
-  
+
       console.log("Total Price:", totalPrice, "Is First Order:", isFirstOrder);
-  
+
       const filteredCoupons = response.data.filter((coupon) => {
         const isEligible =
           totalPrice >= coupon.minPurchaseAmount &&
           (isFirstOrder || coupon.code !== "LUSHNEW");
-  
+
         console.log(
           `Coupon: ${coupon.code}, Min Purchase: ${coupon.minPurchaseAmount}, Eligible: ${isEligible}`
         );
-  
+
         return isEligible;
       });
-  
+
       setAvailableCoupons(filteredCoupons);
       console.log("Filtered Coupons:", filteredCoupons);
     } catch (error) {
@@ -131,223 +138,238 @@ const Checkout = () => {
 
   const fetchProductOffers = async (items) => {
     try {
-        if (!items || items.length === 0) {
-            console.log("No items to fetch offers for");
-            return;
+      if (!items || items.length === 0) {
+        console.log("No items to fetch offers for");
+        return;
+      }
+
+      // Extract product data with proper variance handling
+      const productData = items.map((item) => {
+        const productId = item.productId?._id || item.productId;
+        const categoryId = item.productId?.categoryId;
+
+        // Find matching variance from product's variances array
+        let variancePrice = null;
+        if (item.productId?.variances && item.variance) {
+          const matchingVariance = item.productId.variances.find(
+            (v) =>
+              v.color === item.variance.color && v.size === item.variance.size
+          );
+          variancePrice = matchingVariance?.price;
         }
 
-        // Extract product data with proper variance handling
-        const productData = items.map(item => {
-            const productId = item.productId?._id || item.productId;
-            const categoryId = item.productId?.categoryId;
-            
-            // Find matching variance from product's variances array
-            let variancePrice = null;
-            if (item.productId?.variances && item.variance) {
-                const matchingVariance = item.productId.variances.find(v => 
-                    (v.color === item.variance.color) && 
-                    (v.size === item.variance.size)
-                );
-                variancePrice = matchingVariance?.price;
-            }
+        // Use product's base price if no variance price is found
+        const basePrice = variancePrice || item.productId?.price || item.price;
 
-            // Use product's base price if no variance price is found
-            const basePrice = variancePrice || item.productId?.price || item.price;
+        return {
+          productId,
+          categoryId,
+          variance: {
+            ...item.variance,
+            price: variancePrice,
+          },
+          basePrice,
+          variancePrice,
+        };
+      });
+
+      console.log("Product data for offer fetch:", productData);
+
+      const productIds = productData.map((p) => p.productId).filter(Boolean);
+      const queryString = productIds.join(",");
+
+      const response = await axios.get(
+        `/offers/products?productIds=${queryString}`
+      );
+      console.log("Offer response:", response.data);
+
+      if (response.data.success && response.data.productOffers) {
+        console.log("Setting product offers:", response.data.productOffers);
+        setProductOffers(response.data.productOffers);
+
+        // Update items with best offer prices
+        const updatedItems = items.map((item) => {
+          const productId = item.productId?._id || item.productId;
+
+          // Find matching variance price
+          let variancePrice = null;
+          if (item.productId?.variances && item.variance) {
+            const matchingVariance = item.productId.variances.find(
+              (v) =>
+                v.color === item.variance.color && v.size === item.variance.size
+            );
+            variancePrice = matchingVariance?.price;
+          }
+
+          // Use appropriate base price
+          const basePrice =
+            variancePrice || item.productId?.price || item.price;
+          const offer = response.data.productOffers[productId];
+
+          if (offer && !item.hasAppliedOffer) {
+            const discountedPrice =
+              basePrice * (1 - offer.discountPercentage / 100);
+
+            console.log("Applying best offer:", {
+              productId,
+              basePrice,
+              variancePrice,
+              discountedPrice,
+              discountPercentage: offer.discountPercentage,
+              offerName: offer.offerName,
+            });
 
             return {
-                productId,
-                categoryId,
-                variance: {
-                    ...item.variance,
-                    price: variancePrice
-                },
-                basePrice,
-                variancePrice
+              ...item,
+              variance: {
+                ...item.variance,
+                price: variancePrice,
+              },
+              originalPrice: basePrice,
+              price: discountedPrice,
+              subtotal: discountedPrice * item.quantity,
+              appliedOffer: {
+                name: offer.offerName,
+                percentage: offer.discountPercentage,
+                type: offer.offerType,
+              },
+              hasAppliedOffer: true,
             };
+          }
+
+          // If no offer, preserve original prices
+          if (!item.hasAppliedOffer) {
+            return {
+              ...item,
+              variance: {
+                ...item.variance,
+                price: variancePrice,
+              },
+              originalPrice: basePrice,
+              price: basePrice,
+              subtotal: basePrice * item.quantity,
+              hasAppliedOffer: true,
+            };
+          }
+
+          return item;
         });
 
-        console.log("Product data for offer fetch:", productData);
+        const pricesChanged = updatedItems.some(
+          (updatedItem, index) => updatedItem.price !== items[index].price
+        );
 
-        const productIds = productData.map(p => p.productId).filter(Boolean);
-        const queryString = productIds.join(',');
+        if (pricesChanged) {
+          console.log("Updating items with new prices:", updatedItems);
+          setItems(updatedItems);
 
-        const response = await axios.get(`/offers/products?productIds=${queryString}`);
-        console.log("Offer response:", response.data);
-
-        if (response.data.success && response.data.productOffers) {
-            console.log("Setting product offers:", response.data.productOffers);
-            setProductOffers(response.data.productOffers);
-            
-            // Update items with best offer prices
-            const updatedItems = items.map(item => {
-                const productId = item.productId?._id || item.productId;
-                
-                // Find matching variance price
-                let variancePrice = null;
-                if (item.productId?.variances && item.variance) {
-                    const matchingVariance = item.productId.variances.find(v => 
-                        (v.color === item.variance.color) && 
-                        (v.size === item.variance.size)
-                    );
-                    variancePrice = matchingVariance?.price;
-                }
-
-                // Use appropriate base price
-                const basePrice = variancePrice || item.productId?.price || item.price;
-                const offer = response.data.productOffers[productId];
-                
-                if (offer && !item.hasAppliedOffer) {
-                    const discountedPrice = basePrice * (1 - offer.discountPercentage / 100);
-                    
-                    console.log("Applying best offer:", {
-                        productId,
-                        basePrice,
-                        variancePrice,
-                        discountedPrice,
-                        discountPercentage: offer.discountPercentage,
-                        offerName: offer.offerName
-                    });
-
-                    return {
-                        ...item,
-                        variance: {
-                            ...item.variance,
-                            price: variancePrice
-                        },
-                        originalPrice: basePrice,
-                        price: discountedPrice,
-                        subtotal: discountedPrice * item.quantity,
-                        appliedOffer: {
-                            name: offer.offerName,
-                            percentage: offer.discountPercentage,
-                            type: offer.offerType
-                        },
-                        hasAppliedOffer: true
-                    };
-                }
-                
-                // If no offer, preserve original prices
-                if (!item.hasAppliedOffer) {
-                    return {
-                        ...item,
-                        variance: {
-                            ...item.variance,
-                            price: variancePrice
-                        },
-                        originalPrice: basePrice,
-                        price: basePrice,
-                        subtotal: basePrice * item.quantity,
-                        hasAppliedOffer: true
-                    };
-                }
-                
-                return item;
-            });
-            
-            const pricesChanged = updatedItems.some((updatedItem, index) => 
-                updatedItem.price !== items[index].price
-            );
-            
-            if (pricesChanged) {
-                console.log("Updating items with new prices:", updatedItems);
-                setItems(updatedItems);
-                
-                // Recalculate total price with applied offers
-                const newTotalPrice = updatedItems.reduce((sum, item) => sum + item.subtotal, 0);
-                console.log("New total price with offers:", newTotalPrice);
-                setTotalPrice(newTotalPrice);
-            }
+          // Recalculate total price with applied offers
+          const newTotalPrice = updatedItems.reduce(
+            (sum, item) => sum + item.subtotal,
+            0
+          );
+          console.log("New total price with offers:", newTotalPrice);
+          setTotalPrice(newTotalPrice);
         }
+      }
     } catch (error) {
-        console.error('Error fetching product offers:', {
-            message: error.message,
-            response: error.response?.data,
-            status: error.response?.status
-        });
-        toast.error('Failed to fetch product offers');
+      console.error("Error fetching product offers:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
+      toast.error("Failed to fetch product offers");
     }
-};
+  };
 
-// Update the item display section in the render to show offer details
-const renderItemWithOffer = (item) => (
-  <div className="flex justify-between items-start">
-  <div className="flex-grow">
-    <p className="text-sm text-gray-800 font-semibold">{item.productName}</p>
-    <p className="text-xs text-gray-600">Quantity: {item.quantity}</p>
-    {item.variance && (
-      <p className="text-xs text-gray-600">
-        {item.variance.size && `Size: ${item.variance.size}`}
-        {item.variance.color && `, Color: ${item.variance.color}`}
-      </p>
-    )}
-    {item.appliedOffer && (
-      <p className="text-xs text-green-600">
-        {item.appliedOffer.name} - {item.appliedOffer.percentage}% off
-      </p>
-    )}
-  </div>
-  <div className="text-right space-y-1">
-    <div className="flex flex-col items-end">
-      {item.variance ? (
-        // Show variance price
-        <>
-          {item.variance.price? (
+  // Update the item display section in the render to show offer details
+  const renderItemWithOffer = (item) => (
+    <div className="flex justify-between items-start">
+      <div className="flex-grow">
+        <p className="text-sm text-gray-800 font-semibold">
+          {item.productName}
+        </p>
+        <p className="text-xs text-gray-600">Quantity: {item.quantity}</p>
+        {item.variance && (
+          <p className="text-xs text-gray-600">
+            {item.variance.size && `Size: ${item.variance.size}`}
+            {item.variance.color && `, Color: ${item.variance.color}`}
+          </p>
+        )}
+        {item.appliedOffer && (
+          <p className="text-xs text-green-600">
+            {item.appliedOffer.name} - {item.appliedOffer.percentage}% off
+          </p>
+        )}
+      </div>
+      <div className="text-right space-y-1">
+        <div className="flex flex-col items-end">
+          {item.variance ? (
+            // Show variance price
             <>
-              <span className="text-sm text-gray-500 line-through">
-                ₹{(item.variance.price * item.quantity).toFixed(2)}
-              </span>
-              <span className="text-base font-medium text-gray-900">
-                ₹{(item.price * item.quantity).toFixed(2)}
-              </span>
-              <span className="text-sm text-green-600">
-                Save ₹{((item.variance.price - item.price) * item.quantity).toFixed(2)}
-              </span>
+              {item.variance.price ? (
+                <>
+                  <span className="text-sm text-gray-500 line-through">
+                    ₹{(item.variance.price * item.quantity).toFixed(2)}
+                  </span>
+                  <span className="text-base font-medium text-gray-900">
+                    ₹{(item.price * item.quantity).toFixed(2)}
+                  </span>
+                  <span className="text-sm text-green-600">
+                    Save ₹
+                    {(
+                      (item.variance.price - item.price) *
+                      item.quantity
+                    ).toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-base font-medium text-gray-900">
+                  ₹{(item.price * item.quantity).toFixed(2)}
+                </span>
+              )}
             </>
           ) : (
-            <span className="text-base font-medium text-gray-900">
-              ₹{(item.price * item.quantity).toFixed(2)}
-            </span>
-          )}
-        </>
-      ) : (
-        // Show original price if no variance
-        <>
-          {item.originalPrice > item.price ? (
+            // Show original price if no variance
             <>
-              <span className="text-sm text-gray-500 line-through">
-                ₹{(item.originalPrice * item.quantity).toFixed(2)}
-              </span>
-              <span className="text-base font-medium text-gray-900">
-                ₹{(item.price * item.quantity).toFixed(2)}
-              </span>
-              <span className="text-sm text-green-600">
-                Save ₹{((item.originalPrice - item.price) * item.quantity).toFixed(2)}
-              </span>
+              {item.originalPrice > item.price ? (
+                <>
+                  <span className="text-sm text-gray-500 line-through">
+                    ₹{(item.originalPrice * item.quantity).toFixed(2)}
+                  </span>
+                  <span className="text-base font-medium text-gray-900">
+                    ₹{(item.price * item.quantity).toFixed(2)}
+                  </span>
+                  <span className="text-sm text-green-600">
+                    Save ₹
+                    {(
+                      (item.originalPrice - item.price) *
+                      item.quantity
+                    ).toFixed(2)}
+                  </span>
+                </>
+              ) : (
+                <span className="text-base font-medium text-gray-900">
+                  ₹{(item.price * item.quantity).toFixed(2)}
+                </span>
+              )}
             </>
-          ) : (
-            <span className="text-base font-medium text-gray-900">
-              ₹{(item.price * item.quantity).toFixed(2)}
-            </span>
           )}
-        </>
-      )}
+        </div>
+        <div className="text-xs text-gray-500">
+          Price per item: ₹{item.price.toFixed(2)}
+        </div>
+      </div>
     </div>
-    <div className="text-xs text-gray-500">
-      Price per item: ₹{item.price.toFixed(2)}
-    </div>
-  </div>
-</div>
-);
+  );
 
-
-// Modify useEffect to only run when items change and don't have offers applied
-useEffect(() => {
-    const needsOfferCheck = items.some(item => !item.hasAppliedOffer);
+  // Modify useEffect to only run when items change and don't have offers applied
+  useEffect(() => {
+    const needsOfferCheck = items.some((item) => !item.hasAppliedOffer);
     if (items.length > 0 && needsOfferCheck) {
-        fetchProductOffers(items);
+      fetchProductOffers(items);
     }
-}, [items]);
-
+  }, [items]);
 
   useEffect(() => {
     fetchAddresses();
@@ -365,156 +387,192 @@ useEffect(() => {
 
   const addNewAddress = async (newAddress) => {
     try {
-      const response = await axios.post('/address', { ...newAddress, userId });
-      setAddresses(prevAddresses => [...prevAddresses, response.data]);
+      const response = await axios.post("/address", { ...newAddress, userId });
+      setAddresses((prevAddresses) => [...prevAddresses, response.data]);
       setNewAddressModalOpen(false);
       fetchAddresses();
-      toast.success('New address added successfully!');
+      toast.success("New address added successfully!");
     } catch (error) {
-      console.error('Error adding address:', error);
-      toast.error('Failed to add new address. Please try again.');
+      console.error("Error adding address:", error);
+      toast.error("Failed to add new address. Please try again.");
     }
   };
 
-  const handleOrderSubmit = async (e) => {
-    e.preventDefault();
-  
-    if (!selectedAddress || !paymentMethod) {
-      toast.error('Please select an address and payment method.');
-      return;
-    }
-  
-    const orderDetails = {
-      userId,
-      items,
-      shippingAddress: selectedAddress,
-      paymentMethod,
-      totalItems,
-      totalPrice,
-      appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
-    };
-  
-    setIsLoading(true);
-  
-    try {
-      const response = await axios.post('/addOrder', orderDetails);
-      const { order, razorpayOrder } = response.data;
-  
-      if (paymentMethod === 'UPI' && razorpayOrder) {
-        // Initialize Razorpay for UPI payment
-        const razorpayOptions = {
-          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-          // Replace with Razorpay key
-          amount: razorpayOrder.amount,
-          currency: razorpayOrder.currency,
-          name: "LUSH AURA",
-          description: "Order Payment",
-          order_id: razorpayOrder.id,
-          prefill: {
-            name: user.name || '',  // Use the logged-in user's name
-            email: user.email || '', // Use the logged-in user's email
-            contact: selectedAddress ? addresses.find(addr => addr._id === selectedAddress)?.phone || '' : '', // Use the phone number from selected address
-          },
-          handler: async (response) => {
-            // Verify payment
-            const paymentVerification = await axios.post('/verifypayment', {
+  const handleFailedPayment = async () => {
+    await Promise.all(items.map(item => removeFromCart(item.productId, item.variance)));
+    setItems([]);
+    setTotalItems(0);
+    setTotalPrice(0);
+    setAppliedCoupon(null);
+    setDiscountAmount(0);
+    setCouponCode("");
+  };
+
+  // ... (previous imports and code remain the same until handleOrderSubmit)
+
+const handleOrderSubmit = async (e) => {
+  e.preventDefault();
+
+  if (!selectedAddress || !paymentMethod) {
+    toast.error("Please select an address and payment method.");
+    return;
+  }
+
+  const shippingCharge = 50;
+
+  const orderDetails = {
+    userId,
+    items,
+    shippingAddress: selectedAddress,
+    paymentMethod,
+    totalItems,
+    totalPrice,
+    shippingCharge,
+    appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
+  };
+
+  setIsLoading(true);
+
+  try {
+    const response = await axios.post("/addOrder", orderDetails);
+    const { order, razorpayOrder } = response.data;
+
+    if (paymentMethod === "UPI" && razorpayOrder) {
+      // Existing UPI payment logic remains the same
+      const razorpayOptions = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: razorpayOrder.amount,
+        currency: razorpayOrder.currency,
+        name: "LUSH AURA",
+        description: "Order Payment",
+        order_id: razorpayOrder.id,
+        prefill: {
+          name: user.name || "",
+          email: user.email || "",
+          contact: selectedAddress
+            ? addresses.find((addr) => addr._id === selectedAddress)?.phone || ""
+            : "",
+        },
+        handler: async (response) => {
+          try {
+            const paymentVerification = await axios.post("/verifypayment", {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-  
-            if (paymentVerification.data.success || paymentMethod === 'COD') {
-              toast.success("Order placed successfully!");
-            
-              // Clear cart items for the placed order
-              
-              handleSuccessfulOrder()
-            
-              // Clear cart and reset UI
-            } else {
-              toast.error("Payment verification failed.");
-            }
-          },
-          theme: { color: "#EC4899" },
-        };
-  
-        const razorpay = new Razorpay(razorpayOptions);
-        razorpay.open();
-      } else {
-        // Handle Cash on Delivery
-        handleSuccessfulOrder()
 
-        // Clear cart and reset UI
+            if (paymentVerification.data.success) {
+              toast.success("Order placed successfully!");
+              handleSuccessfulOrder();
+            } else {
+              throw new Error("Payment verification failed.");
+            }
+          } catch (error) {
+            console.error("Payment verification failed:", error);
+            await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
+            toast.error("Payment failed. Please try again.");
+            await handleFailedPayment();
+          }
+        },
+        theme: { color: "#EC4899" },
+        modal: {
+          ondismiss: async () => {
+            await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
+            toast.error("Payment process was cancelled.");
+            await handleFailedPayment();
+          },
+        },
+        retry: false,
+      };
+
+      const razorpay = new Razorpay(razorpayOptions);
+      razorpay.open();
+    } else if (paymentMethod === "Cash on Delivery") {
+      // Handle Cash on Delivery order
+      try {
+        // Update order status to pending/processing for COD
+       
+        //toast.success("Order placed successfully!");
+        handleSuccessfulOrder();
+      } catch (error) {
+        console.error("Error processing COD order:", error);
+        await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
+        toast.error("Failed to place order. Please try again.");
+        await handleFailedPayment();
       }
-    } catch (error) {
-      console.error('Error placing order:', error);
-      toast.error(error.response?.data?.message || 'Failed to place the order. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
-  };
+  } catch (error) {
+    console.error("Error placing order:", error);
+    toast.error(error.response?.data?.message || "Failed to place the order. Please try again.");
+    await handleFailedPayment();
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+// ... (rest of the component remains the same)
+  
 
   const handleSuccessfulOrder = async () => {
     toast.success("Order placed successfully!");
-    
+
     // Clear cart items for the placed order
     await Promise.all(
-      items.map(item => removeFromCart(item.productId, item.variance))
+      items.map((item) => removeFromCart(item.productId, item.variance))
     );
-    
+
     // Reset UI state
     setItems([]);
     setTotalItems(0);
     setTotalPrice(0);
     setAppliedCoupon(null);
     setDiscountAmount(0);
-    setCouponCode('');
-    
+    setCouponCode("");
+
     // Show order placed animation
     setOrderPlaced(true);
 
     setTimeout(() => {
       setOrderPlaced(false);
     }, 5000);
-
   };
-  
-  
 
   const removeFromCart = async (productId, variance) => {
     try {
       const payload = { userId, productId, variance };
       const response = await axios.post(`/cartempty`, payload);
-      console.log('Response from server:', response.data);
+      console.log("Response from server:", response.data);
       fetchCartItems();
     } catch (error) {
-      console.error('Error removing item from cart:', error);
-      toast.error('Failed to remove item from cart. Please try again.');
+      console.error("Error removing item from cart:", error);
+      toast.error("Failed to remove item from cart. Please try again.");
     }
   };
 
   const applyCoupon = () => {
     if (!couponCode) {
-      toast.error('Please enter a valid coupon code.');
+      toast.error("Please enter a valid coupon code.");
       return;
     }
 
     if (appliedCoupon) {
-      toast.error('A coupon is already applied. Only one coupon can be used.');
+      toast.error("A coupon is already applied. Only one coupon can be used.");
       return;
     }
 
-    const availableCoupon = availableCoupons.find(coupon => coupon.code === couponCode);
+    const availableCoupon = availableCoupons.find(
+      (coupon) => coupon.code === couponCode
+    );
 
     if (!availableCoupon) {
-      toast.error('Invalid coupon code. Please try again.');
+      toast.error("Invalid coupon code. Please try again.");
       return;
     }
 
     let discountAmount = 0;
-    if (availableCoupon.discountType === 'fixed') {
+    if (availableCoupon.discountType === "fixed") {
       discountAmount = availableCoupon.discountValue;
-    } else if (availableCoupon.discountType === 'percentage') {
+    } else if (availableCoupon.discountType === "percentage") {
       discountAmount = (totalPrice * availableCoupon.discountValue) / 100;
     }
 
@@ -533,22 +591,24 @@ useEffect(() => {
   };
 
   const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text).then(() => {
-      toast.success('Coupon code copied to clipboard!');
-    }, (err) => {
-      console.error('Could not copy text: ', err);
-      toast.error('Failed to copy coupon code. Please try again.');
-    });
+    navigator.clipboard.writeText(text).then(
+      () => {
+        toast.success("Coupon code copied to clipboard!");
+      },
+      (err) => {
+        console.error("Could not copy text: ", err);
+        toast.error("Failed to copy coupon code. Please try again.");
+      }
+    );
   };
 
   const removeCoupon = () => {
     setAppliedCoupon(null);
     setTotalPrice(totalPrice + discountAmount);
     setDiscountAmount(0);
-    setCouponCode('');
-    toast.success('Coupon removed successfully!');
+    setCouponCode("");
+    toast.success("Coupon removed successfully!");
   };
-  
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -587,7 +647,9 @@ useEffect(() => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
               >
-                <label className="block text-lg font-medium text-gray-700 mb-3">Select Delivery Address</label>
+                <label className="block text-lg font-medium text-gray-700 mb-3">
+                  Select Delivery Address
+                </label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {addresses.map((addr) => (
                     <motion.div
@@ -595,7 +657,9 @@ useEffect(() => {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className={`border-2 ${
-                        selectedAddress === addr._id ? 'border-pink-500 shadow-lg' : 'border-gray-200'
+                        selectedAddress === addr._id
+                          ? "border-pink-500 shadow-lg"
+                          : "border-gray-200"
                       } rounded-lg p-4 cursor-pointer transition-all duration-300 hover:shadow-xl`}
                       onClick={() => handleAddressChange(addr._id)}
                     >
@@ -603,7 +667,8 @@ useEffect(() => {
                         <MapPinIcon className="h-6 w-6 text-pink-500 mr-2" />
                         <div>
                           <p className="text-sm font-medium text-gray-900">
-                            {addr.addressLine}, {addr.city}, {addr.state}, {addr.pincode}, {addr.country}
+                            {addr.addressLine}, {addr.city}, {addr.state},{" "}
+                            {addr.pincode}, {addr.country}
                           </p>
                         </div>
                       </div>
@@ -628,8 +693,10 @@ useEffect(() => {
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
               >
-                <label className="block text-lg font-medium text-gray-700 mb-3">Select Payment Method</label>
-                {['Cash on Delivery', 'Wallet', 'UPI'].map((method) => (
+                <label className="block text-lg font-medium text-gray-700 mb-3">
+                  Select Payment Method
+                </label>
+                {["Cash on Delivery", "Wallet", "UPI"].map((method) => (
                   <motion.div
                     key={method}
                     whileHover={{ scale: 1.02 }}
@@ -645,7 +712,10 @@ useEffect(() => {
                       onChange={handlePaymentMethodChange}
                       className="focus:ring-pink-500 h-5 w-5 text-pink-600"
                     />
-                    <label htmlFor={method} className="ml-3 text-lg cursor-pointer">
+                    <label
+                      htmlFor={method}
+                      className="ml-3 text-lg cursor-pointer"
+                    >
                       {method}
                     </label>
                   </motion.div>
@@ -659,63 +729,44 @@ useEffect(() => {
                 transition={{ delay: 0.5, duration: 0.5 }}
                 className="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner"
               >
-                <h3 className="text-2xl font-semibold text-gray-800 mb-4">Order Summary</h3>
-                
-                <p className="text-xl text-gray-900 mb-2">Total Items: <span className="font-bold">{totalItems}</span></p><p className="text-xl text-gray-900 mb-4">Total Price: <span className="font-bold text-pink-600">₹{totalPrice}</span></p>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+                  Order Summary
+                </h3>
+
+                <p className="text-xl text-gray-900 mb-2">
+                  Total Items: <span className="font-bold">{totalItems}</span>
+                </p>
+                <p className="text-xl text-gray-900 mb-2">
+  Shipping Charge: <span className="font-bold text-pink-600">₹{shippingCharge}</span>
+</p>
+<p className="text-xl text-gray-900 mb-4">
+  Total Price:{" "}
+  <span className="font-bold text-pink-600">₹{totalPrice + shippingCharge}</span>
+</p>
 
                 <div className="mt-6 space-y-4">
-          {currentItems.map((item, index) => (
-            <motion.div
-              key={index}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 * index }}
-              className="border-b py-2 transition-all duration-300 hover:bg-gray-100 rounded-lg p-4"
-            >
-              {/* <div className="flex justify-between items-start">
-                <div className="flex-grow">
-                  <p className="text-sm text-gray-800 font-semibold">{item.productName}</p>
-                 
-                  <p className="text-xs text-gray-600">Quantity: {item.quantity}</p>
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center space-x-2">
-                  <span className="text-sm text-gray-500 line-through mr-2">₹{item.variance?.price || item.price}</span>
-
-                    <span className="text-sm font-medium text-gray-900">₹{item.subtotal}</span>
-                  </div>
-                  <div className="text-right">
-                  {item.originalPrice && item.originalPrice > item.price ? (
-                    <>
-                      <p className="text-sm text-gray-500 line-through">₹{item.originalPrice}</p>
-                      <p className="text-base font-medium text-gray-900">₹{item.price}</p>
-                      <p className="text-sm text-green-600">
-                        Save ₹{(item.originalPrice - item.price).toFixed(2)}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="text-base font-medium text-gray-900">₹{item.price}</p>
-                  )}
-                </div>
-
-                </div>
-              </div> */}
-                                  <div className="flex justify-between items-start">
+                  {currentItems.map((item, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 * index }}
+                      className="border-b py-2 transition-all duration-300 hover:bg-gray-100 rounded-lg p-4"
+                    >
+                      
+                      <div className="flex justify-between items-start">
   <div className="flex-grow">
     <p className="text-sm text-gray-800 font-semibold">{item.productName}</p>
     <p className="text-xs text-gray-600">Quantity: {item.quantity}</p>
-    {item.variance && (
-      <p className="text-xs text-gray-600">
-        {item.variance.size && `Size: ${item.variance.size}`}
-        {item.variance.color && `, Color: ${item.variance.color}`}
-        {item.variance.price && `, Price: ₹${item.variance.price}`}
-      </p>
-    )}
+    <p className="text-xs text-gray-600">
+      {item.variance?.size && `Size: ${item.variance.size}`}
+      {item.variance?.color && `, Color: ${item.variance.color}`}
+      {item.variance?.price && `, Price: ₹${item.variance.price.toFixed(2)}`}
+    </p>
   </div>
   <div className="text-right space-y-1">
     <div className="flex flex-col items-end">
-      {/* Using variance price as the original price if available */}
-      {item.variance && item.variance.price > item.price ? (
+      {item.variance?.price ? (
         <>
           <span className="text-sm text-gray-500 line-through">
             ₹{(item.variance.price * item.quantity).toFixed(2)}
@@ -740,27 +791,30 @@ useEffect(() => {
 </div>
 
 
-            </motion.div>
-          ))}
-        </div>
-        <div className="mt-6 border-t pt-4">
-                <div className="space-y-2">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal ({totalItems} items)</span>
-                    <span>₹{(totalPrice + discountAmount).toFixed(2)}</span>
-                  </div>
-                  {discountAmount > 0 && (
-                    <div className="flex justify-between text-green-600">
-                      <span>Coupon Discount</span>
-                      <span>-₹{discountAmount.toFixed(2)}</span>
+
+
+
+                    </motion.div>
+                  ))}
+                </div>
+                <div className="mt-6 border-t pt-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between text-gray-600">
+                      <span>Subtotal ({totalItems} items)</span>
+                      <span>₹{(totalPrice + discountAmount).toFixed(2)}</span>
                     </div>
-                  )}
-                  <div className="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t">
-                    <span>Total Amount</span>
-                    <span>₹{totalPrice.toFixed(2)}</span>
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Coupon Discount</span>
+                        <span>-₹{discountAmount.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-lg font-semibold text-gray-900 pt-2 border-t">
+                      <span>Total Amount</span>
+                      <span>₹{totalPrice.toFixed(2)}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
 
                 <div className="flex justify-center mt-4">
                   <button
@@ -771,11 +825,14 @@ useEffect(() => {
                     <ChevronLeftIcon className="h-5 w-5" />
                   </button>
                   <span className="mx-2 text-gray-700">
-                    Page {currentPage} of {Math.ceil(items.length / itemsPerPage)}
+                    Page {currentPage} of{" "}
+                    {Math.ceil(items.length / itemsPerPage)}
                   </span>
                   <button
                     onClick={() => paginate(currentPage + 1)}
-                    disabled={currentPage === Math.ceil(items.length / itemsPerPage)}
+                    disabled={
+                      currentPage === Math.ceil(items.length / itemsPerPage)
+                    }
                     className="ml-2 px-3 py-1 bg-pink-500 text-white rounded-md disabled:opacity-50"
                   >
                     <ChevronRightIcon className="h-5 w-5" />
@@ -790,7 +847,9 @@ useEffect(() => {
                 transition={{ delay: 0.6, duration: 0.5 }}
                 className="mt-8 bg-gray-50 p-6 rounded-lg shadow-inner relative overflow-hidden"
               >
-                <h3 className="text-2xl font-semibold text-gray-800 mb-4">Apply Coupon</h3>
+                <h3 className="text-2xl font-semibold text-gray-800 mb-4">
+                  Apply Coupon
+                </h3>
                 <div className="flex items-center space-x-2 mb-4">
                   <input
                     type="text"
@@ -810,8 +869,12 @@ useEffect(() => {
                 {appliedCoupon && (
                   <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-4 rounded-md flex justify-between items-center">
                     <div>
-                      <p className="font-medium">Coupon applied: {appliedCoupon.code}</p>
-                      <p className="text-sm">Discount: ₹{discountAmount.toFixed(2)}</p>
+                      <p className="font-medium">
+                        Coupon applied: {appliedCoupon.code}
+                      </p>
+                      <p className="text-sm">
+                        Discount: ₹{discountAmount.toFixed(2)}
+                      </p>
                     </div>
                     {/* <button
                       onClick={() => copyToClipboard(appliedCoupon.code)}
@@ -820,12 +883,11 @@ useEffect(() => {
                       <CopyIcon className="h-5 w-5" />
                     </button> */}
                     <button
-        onClick={removeCoupon}
-        className="text-red-600 hover:text-red-800 transition-colors duration-300"
-      >
-        <XIcon className="h-5 w-5" />
-      </button>
-
+                      onClick={removeCoupon}
+                      className="text-red-600 hover:text-red-800 transition-colors duration-300"
+                    >
+                      <XIcon className="h-5 w-5" />
+                    </button>
                   </div>
                 )}
                 <AnimatePresence>
@@ -838,23 +900,33 @@ useEffect(() => {
                       className="absolute inset-0 bg-pink-100 bg-opacity-90 flex items-center justify-center"
                     >
                       <div className="text-center">
-                        <h3 className="text-3xl font-bold text-pink-600 mb-2">Coupon Applied!</h3>
-                        <p className="text-xl text-pink-800">You saved ₹{discountAmount.toFixed(2)}</p>
+                        <h3 className="text-3xl font-bold text-pink-600 mb-2">
+                          Coupon Applied!
+                        </h3>
+                        <p className="text-xl text-pink-800">
+                          You saved ₹{discountAmount.toFixed(2)}
+                        </p>
                       </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
-                <h4 className="text-lg font-semibold text-gray-800 mb-2">Available Coupons:</h4>
+                <h4 className="text-lg font-semibold text-gray-800 mb-2">
+                  Available Coupons:
+                </h4>
                 <div className="space-y-2">
                   {availableCoupons.map((coupon) => (
-                    <div key={coupon.code} className="bg-white p-2 rounded-md shadow flex justify-between items-center">
+                    <div
+                      key={coupon.code}
+                      className="bg-white p-2 rounded-md shadow flex justify-between items-center"
+                    >
                       <div>
                         <p className="font-medium">{coupon.code}</p>
-                        <p className="text-sm text-gray-600">{coupon.description}</p>
+                        <p className="text-sm text-gray-600">
+                          {coupon.description}
+                        </p>
                       </div>
                       <button
-                              type="button" 
-
+                        type="button"
                         onClick={() => copyToClipboard(coupon.code)}
                         className="text-pink-600 hover:text-pink-800 transition-colors duration-300"
                       >
@@ -880,14 +952,30 @@ useEffect(() => {
                 >
                   {isLoading ? (
                     <span className="flex items-center justify-center">
-                      <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      <svg
+                        className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        ></circle>
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        ></path>
                       </svg>
                       Processing...
                     </span>
                   ) : (
-                    'Place Order'
+                    "Place Order"
                   )}
                 </motion.button>
               </motion.div>
@@ -911,14 +999,22 @@ useEffect(() => {
                       <motion.div
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
-                        transition={{ type: "spring", stiffness: 200, damping: 10 }}
+                        transition={{
+                          type: "spring",
+                          stiffness: 200,
+                          damping: 10,
+                        }}
                         className="mb-4 relative"
                       >
                         <div className="absolute inset-0 bg-green-200 rounded-full animate-ping"></div>
                         <CheckCircleIcon className="mx-auto h-24 w-24 text-green-500 relative z-10" />
                       </motion.div>
-                      <h3 className="text-3xl font-bold text-gray-900 mb-2">Order Placed Successfully!</h3>
-                      <p className="text-xl text-gray-600 mb-6">Thank you for your purchase.</p>
+                      <h3 className="text-3xl font-bold text-gray-900 mb-2">
+                        Order Placed Successfully!
+                      </h3>
+                      <p className="text-xl text-gray-600 mb-6">
+                        Thank you for your purchase.
+                      </p>
                       <div className="flex justify-center space-x-4">
                         <motion.button
                           whileHover={{ scale: 1.05 }}
@@ -968,23 +1064,36 @@ useEffect(() => {
             className="bg-white rounded-lg p-6 max-w-md w-full"
           >
             <h2 className="text-2xl font-bold mb-4">Add New Address</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newAddress = {
-                addressLine: formData.get('address'),
-                street: formData.get('street'),
-                city: formData.get('city'),
-                state: formData.get('state'),
-                country: formData.get('country'),
-                pincode: formData.get('pincode'),
-                phone: formData.get('phone')
-              };
-              addNewAddress(newAddress);
-            }}>
-              {['address', 'street', 'city', 'state', 'country', 'pincode', 'phone'].map((field) => (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newAddress = {
+                  addressLine: formData.get("address"),
+                  street: formData.get("street"),
+                  city: formData.get("city"),
+                  state: formData.get("state"),
+                  country: formData.get("country"),
+                  pincode: formData.get("pincode"),
+                  phone: formData.get("phone"),
+                };
+                addNewAddress(newAddress);
+              }}
+            >
+              {[
+                "address",
+                "street",
+                "city",
+                "state",
+                "country",
+                "pincode",
+                "phone",
+              ].map((field) => (
                 <div key={field} className="mb-4">
-                  <label htmlFor={field} className="block text-sm font-medium text-gray-700 mb-1 capitalize">
+                  <label
+                    htmlFor={field}
+                    className="block text-sm font-medium text-gray-700 mb-1 capitalize"
+                  >
                     {field}
                   </label>
                   <input
@@ -997,7 +1106,7 @@ useEffect(() => {
                 </div>
               ))}
               <div className="flex justify-end space-x-2">
-                <motion.button 
+                <motion.button
                   type="button"
                   className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
                   onClick={() => setNewAddressModalOpen(false)}
@@ -1006,7 +1115,7 @@ useEffect(() => {
                 >
                   Cancel
                 </motion.button>
-                <motion.button 
+                <motion.button
                   type="submit"
                   className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
                   whileHover={{ scale: 1.05 }}

@@ -191,10 +191,14 @@ const OrderListPage = () => {
   const [orderToCancel, setOrderToCancel] = useState(null);
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [itemToReturn, setItemToReturn] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [cancelReason, setCancelReason] = useState("");
+  const [otherCancelReason, setOtherCancelReason] = useState("");
 
   const navigate = useNavigate();
 
   const user = useSelector((state) => state.user.user);
+  const userId = user?.id || user?._id;
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -341,6 +345,71 @@ const OrderListPage = () => {
     }
   };
 
+  const handleOrderSubmit = async (e, retryOrderDetails = null) => {
+    if (e) e.preventDefault();
+    
+    setIsLoading(true);
+    
+    try {
+      if (retryOrderDetails) {
+        const razorpayOptions = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: retryOrderDetails.totalPrice * 100, // Convert to paise
+          currency: "INR",
+          name: "LUSH AURA",
+          description: "Order Payment Retry",
+          handler: async (paymentResponse) => {
+            try {
+              // Single API call to handle payment verification and order update
+              const { data } = await axios.post(`/retryorder/${retryOrderDetails.orderId}`, {
+                razorpay_order_id: paymentResponse.razorpay_order_id,
+                razorpay_payment_id: paymentResponse.razorpay_payment_id,
+                razorpay_signature: paymentResponse.razorpay_signature
+              });
+
+              if (data.success) {
+                toast.success("Payment completed successfully!");
+                // Update the local state instead of reloading the page
+                setOrders(prevOrders => 
+                  prevOrders.map(order => 
+                    order._id === retryOrderDetails.orderId 
+                      ? { ...order, paymentStatus: "Completed" } 
+                      : order
+                  )
+                );
+              } else {
+                toast.error("Payment verification failed");
+              }
+            } catch (error) {
+              console.error("Error verifying payment:", error);
+              toast.error("Payment verification failed");
+            }
+          },
+          modal: {
+            ondismiss: async () => {
+              toast.error("Payment cancelled");
+            }
+          },
+          prefill: {
+            name: user?.name || "",
+            email: user?.email || "",
+            contact: retryOrderDetails.shippingAddress?.phone || ""
+          },
+          theme: { color: "#EC4899" }
+        };
+
+        const razorpay = new Razorpay(razorpayOptions);
+        razorpay.open();
+      }
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast.error("Failed to process payment");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
   const isReturnEligible = (orderDate) => {
     const currentDate = new Date();
     const orderDateObj = new Date(orderDate);
@@ -451,6 +520,20 @@ const OrderListPage = () => {
                         Payment Status:{" "}
                         <PaymentStatusBadge status={order?.paymentStatus} />
                       </p>
+                      {order?.paymentStatus === "Failed" && order?.paymentMethod === "UPI" && (
+                        <button
+                          onClick={() => handleOrderSubmit(null, {
+                            orderId: order._id,
+                            totalPrice: order.totalPrice,
+                            shippingAddress: order.shippingAddress,
+                          })}
+                          className="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+                        >
+                          Retry Payment
+                        </button>
+                      )}
+
+
                     </div>
                   </div>
                 </div>
@@ -459,62 +542,62 @@ const OrderListPage = () => {
                     Order Items:
                   </h4>
                   <ul className="divide-y divide-gray-200">
-  {order?.items?.map((item, index) => (
-    <li key={index} className="py-2">
-      <div className="flex items-center space-x-4">
-        <div className="flex-shrink-0 h-10 w-10">
-          <img
-            className="h-10 w-10 rounded-full"
-            src={item?.variance?.varianceImage?.[0]}
-            alt={item?.productName}
-          />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900 truncate">
-            {item?.productName}
-          </p>
-          <p className="text-sm text-gray-500">
-            {item?.variance?.size && `Size: ${item.variance.size}`}
-            {item?.variance?.size && item?.variance?.color && " | "}
-            {item?.variance?.color && `Color: ${item.variance.color}`}
-          </p>
-        </div>
-        <div className="flex-shrink-0 text-sm text-gray-500">
-          {item?.quantity ?? 0} x ₹{(item?.price ?? 0).toFixed(2)}
-        </div>
-        <div className="flex-shrink-0 text-sm font-medium text-gray-900">
-          ₹{(item?.subtotal ?? 0).toFixed(2)}
-        </div>
-        <div>
-          {item?.productStatus === "Returned" ? (
-            <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-green-100 text-green-800">
-              Returned
-            </span>
-          ) : item?.productStatus === "Return Failed" ? (
-            <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-red-100 text-red-800">
-              Return Failed
-            </span>
-          ) : item?.status !== "Cancelled" && (
-            <button
-              onClick={() =>
-                order.orderStatus === "Delivered" &&
-                isReturnEligible(order.orderDate)
-                  ? openReturnModal(order?._id, item?._id)
-                  : openProductCancelModal(order?._id, item?._id)
-              }
-              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-            >
-              {order.orderStatus === "Delivered" &&
-              isReturnEligible(order.orderDate)
-                ? "Return"
-                : "Cancel Product"}
-            </button>
-          )}
-        </div>
-      </div>
-    </li>
-  ))}
-</ul>
+                    {order?.items?.map((item, index) => (
+                      <li key={index} className="py-2">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <img
+                              className="h-10 w-10 rounded-full"
+                              src={item?.variance?.varianceImage?.[0]}
+                              alt={item?.productName}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {item?.productName}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {item?.variance?.size && `Size: ${item.variance.size}`}
+                              {item?.variance?.size && item?.variance?.color && " | "}
+                              {item?.variance?.color && `Color: ${item.variance.color}`}
+                            </p>
+                          </div>
+                          <div className="flex-shrink-0 text-sm text-gray-500">
+                            {item?.quantity ?? 0} x ₹{(item?.price ?? 0).toFixed(2)}
+                          </div>
+                          <div className="flex-shrink-0 text-sm font-medium text-gray-900">
+                            ₹{(item?.subtotal ?? 0).toFixed(2)}
+                          </div>
+                          <div>
+                            {item?.productStatus === "Returned" ? (
+                              <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-green-100 text-green-800">
+                                Returned
+                              </span>
+                            ) : item?.productStatus === "Return Failed" ? (
+                              <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-red-100 text-red-800">
+                                Return Failed
+                              </span>
+                            ) : item?.status !== "Cancelled" && (
+                              <button
+                                onClick={() =>
+                                  order.orderStatus === "Delivered" &&
+                                  isReturnEligible(order.orderDate)
+                                    ? openReturnModal(order?._id, item?._id)
+                                    : openProductCancelModal(order?._id, item?._id)
+                                }
+                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                              >
+                                {order.orderStatus === "Delivered" &&
+                                  isReturnEligible(order.orderDate)
+                                  ? "Return"
+                                  : "Cancel Product"}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
 
 
                 </div>
@@ -583,10 +666,30 @@ const OrderListPage = () => {
                     Cancel Order
                   </Dialog.Title>
                   <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      Are you sure you want to cancel this order? This action
-                      cannot be undone.
+                    <p className="text-sm text-gray-500 mb-4">
+                      Please select a reason for cancelling this order:
                     </p>
+                    <select
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                    >
+                      <option value="">Select a reason</option>
+                      <option value="ChangeOfMind">Change of mind</option>
+                      <option value="DeliveryTooLong">Delivery time too long</option>
+                      <option value="FoundBetterDeal">Found a better deal elsewhere</option>
+                      <option value="OrderedByMistake">Ordered by mistake</option>
+                      <option value="Other">Other</option>
+                    </select>
+                    {cancelReason === "Other" && (
+                      <textarea
+                        value={otherCancelReason}
+                        onChange={(e) => setOtherCancelReason(e.target.value)}
+                        placeholder="Please specify the reason"
+                        className="mt-2 block w-full px-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+                        rows="3"
+                      />
+                    )}
                   </div>
 
                   <div className="mt-4 flex justify-end space-x-3">
@@ -655,3 +758,4 @@ const OrderListPage = () => {
 };
 
 export default OrderListPage;
+
