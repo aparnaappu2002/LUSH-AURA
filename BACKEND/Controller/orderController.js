@@ -46,10 +46,16 @@ const addOrder = async (req, res) => {
         return res.status(400).json({ message: "Invalid item details." });
       }
 
-      const product = await Product.findById(item.productId);
+      // const product = await Product.findById(item.productId);
+      // if (!product) {
+      //   throw new Error(`Product with ID ${item.productId} not found.`);
+      // }
+
+      const product = await Product.findById(item.productId).populate('categoryId');
       if (!product) {
         throw new Error(`Product with ID ${item.productId} not found.`);
       }
+
 
       const selectedVariance = product.variances.find(
         (v) => (item.variance.size ? v.size === item.variance.size : true) &&
@@ -64,6 +70,13 @@ const addOrder = async (req, res) => {
 
       // Reduce stock
       selectedVariance.quantity -= item.quantity;
+      product.salesCount += item.quantity;
+
+      if (product.categoryId) {
+        product.categoryId.salesCount += item.quantity;
+        await product.categoryId.save();
+      }
+
       updatedProducts.push({
         product,
         size: item.variance.size,
@@ -1023,6 +1036,226 @@ const retryPayment = async (req, res) => {
   }
 };
 
+const invoiceDownload = async (req, res) => {
+  try {
+    const orderId = req.params.orderId;
+
+    const order = await Order.findById(orderId)
+      .populate({
+        path: "userId",
+        model: "users",
+        select: "firstName email phoneNumber"
+      })
+      .populate({
+        path: "shippingAddress",
+        model: "address",
+        select: "addressLine street city state pincode phone"
+      })
+      .populate("items.productId");
+
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    // Create a new PDF document
+    const doc = new PDFDocument({ margin: 50 });
+    let filename = `invoice-${orderId}.pdf`;
+    res.setHeader("Content-disposition", `attachment; filename=${filename}`);
+    res.setHeader("Content-type", "application/pdf");
+
+    doc.pipe(res);
+
+    // Define colors
+    const colors = {
+      background: '#FFF0F3',
+      header: '#FF69B4',
+      text: '#4A4A4A',
+    };
+
+    // Background
+    doc.rect(0, 0, doc.page.width, doc.page.height).fill(colors.background);
+
+    // Header
+    doc.fontSize(24)
+      .fillColor(colors.header)
+      .text('LUSH AURA INVOICE', {
+        align: 'center',
+        
+      })
+      .moveDown();
+
+    // Customer Details
+    doc.fontSize(16)
+      .fillColor(colors.header)
+      .text('Customer Details')
+      .moveDown(0.5);
+
+    doc.fontSize(12)
+      .fillColor(colors.text);
+
+    // Get shipping address from the populated data
+    const shippingAddress = order.shippingAddress;
+    const addressString = shippingAddress ? 
+      `${shippingAddress.addressLine}, ${shippingAddress.street || ''}, ${shippingAddress.city}, ${shippingAddress.state} - ${shippingAddress.pincode}` :
+      'Address not available';
+
+    doc.text(`Customer Name: ${order.userId ? order.userId.firstName : 'N/A'}`)
+      .text(`Customer Email: ${order.userId ? order.userId.email : 'N/A'}`)
+      .text(`Customer Phone: ${order.userId ? order.userId.phoneNumber : 'N/A'}`)
+      .moveDown(0.5)
+      .text('Shipping Address:')
+      .text(addressString)
+      .text(`Contact Number: ${shippingAddress ? shippingAddress.phone : 'N/A'}`)
+      .moveDown();
+
+    // Order Details
+    doc.fontSize(16)
+      .fillColor(colors.header)
+      .text('Order Details')
+      .moveDown(0.5);
+
+    doc.fontSize(12)
+      .fillColor(colors.text)
+      .text(`Order ID: ${order._id}`)
+      .text(`Order Date: ${new Date(order.orderDate).toLocaleString()}`)
+      .text(`Payment Method: ${order.paymentMethod}`)
+      .text(`Payment Status: ${order.paymentStatus}`)
+      .text(`Order Status: ${order.orderStatus}`)
+      .moveDown();
+
+    // Order Items Table
+    doc.fontSize(16)
+      .fillColor(colors.header)
+      .text('Order Items')
+      .moveDown(0.5);
+
+    // Define table layout
+    const tableLayout = {
+      x: 50,
+      width: 500,
+      rowHeight: 30,
+      columns: {
+        item: { x: 50, width: 250 },
+        quantity: { x: 300, width: 70 },
+        price: { x: 370, width: 80 },
+        subtotal: { x: 450, width: 90 }
+      }
+    };
+
+    // Table headers
+    doc.fontSize(12)
+      .fillColor(colors.text);
+
+    Object.entries({
+      'Item': tableLayout.columns.item.x,
+      'Quantity': tableLayout.columns.quantity.x,
+      'Price': tableLayout.columns.price.x,
+      'Subtotal': tableLayout.columns.subtotal.x
+    }).forEach(([header, x]) => {
+      doc.text(header, x, doc.y);
+    });
+
+    doc.moveDown();
+
+    // Table rows
+    order.items.forEach((item) => {
+      const initialY = doc.y;
+      let maxHeight = tableLayout.rowHeight;
+
+      // Calculate wrapped text height
+      const nameHeight = doc.fontSize(12)
+        .heightOfString(item.productName, {
+          width: tableLayout.columns.item.width,
+          align: 'left'
+        });
+
+      maxHeight = Math.max(maxHeight, nameHeight + 10);
+
+      // Check for page break
+      if (doc.y + maxHeight > doc.page.height - 150) {
+        doc.addPage();
+        doc.fontSize(12).fillColor(colors.text);
+      }
+
+      // Draw item name with word wrap
+      doc.text(item.productName,
+        tableLayout.columns.item.x,
+        doc.y,
+        {
+          width: tableLayout.columns.item.width,
+          align: 'left'
+        }
+      );
+
+      // Draw other columns
+      doc.text(item.quantity.toString(),
+        tableLayout.columns.quantity.x,
+        initialY,
+        { width: tableLayout.columns.quantity.width, align: 'left' }
+      );
+
+      doc.text(`₹${item.price.toFixed(2)}`,
+        tableLayout.columns.price.x,
+        initialY,
+        { width: tableLayout.columns.price.width, align: 'left' }
+      );
+
+      doc.text(`₹${item.subtotal.toFixed(2)}`,
+        tableLayout.columns.subtotal.x,
+        initialY,
+        { width: tableLayout.columns.subtotal.width, align: 'left' }
+      );
+
+      // Add variance information if available
+      if (item.variance) {
+        doc.moveDown(1);
+        let varianceText = [];
+        if (item.variance.size) varianceText.push(`Size: ${item.variance.size}`);
+        if (item.variance.color) varianceText.push(`Color: ${item.variance.color}`);
+        
+        if (varianceText.length > 0) {
+          doc.fontSize(10)
+            .text(varianceText.join(', '), 
+              tableLayout.columns.item.x + 20,
+              doc.y);
+        }
+      }
+
+      doc.moveDown();
+    });
+
+    // Totals section
+    doc.moveDown()
+      .fontSize(12)
+      .fillColor(colors.text);
+
+    const rightColumn = doc.page.width - 150;
+
+    doc.text(`Total Items: ${order.totalItems}`, rightColumn, doc.y, { align: 'right' })
+      .text(`Subtotal: ₹${order.totalPrice.toFixed(2)}`, rightColumn, doc.y, { align: 'right' })
+      .text(`Shipping Charge: ₹${order.shippingCharge.toFixed(2)}`, rightColumn, doc.y, { align: 'right' })
+      .text(`Grand Total: ₹${(order.totalPrice + order.shippingCharge).toFixed(2)}`, rightColumn, doc.y, { align: 'right' });
+
+    // Add some space before footer
+    doc.moveDown(2);
+
+    // Reset the x position and use the full page width for the footer
+    doc.fontSize(10)
+      .fillColor(colors.text)
+      .text('Thank you for your purchase!', 50, doc.y, {
+        width: doc.page.width - 100,
+        align: 'center'
+      });
+
+
+    doc.end();
+  } catch (error) {
+    console.error("Error generating invoice:", error);
+    res.status(500).json({ message: "Failed to generate invoice" });
+  }
+};
+
+
 
 
 
@@ -1045,5 +1278,6 @@ module.exports ={
     salesReport,
     downloadReport,
     failurePayment,
-    retryPayment
+    retryPayment,
+    invoiceDownload,
 }

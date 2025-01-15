@@ -6,6 +6,7 @@ import { Dialog, Transition } from "@headlessui/react";
 import { Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast, Toaster } from "react-hot-toast";
+import { FaDownload } from "react-icons/fa6";
 
 const OrderStatusBadge = ({ status }) => {
   const getStatusColor = (status) => {
@@ -409,6 +410,25 @@ const OrderListPage = () => {
     }
   };
 
+  const handleDownloadInvoice = async (orderId) => {
+    try {
+      const response = await axios.get(`/download-invoice/${orderId}`, {
+        responseType: 'blob',
+      });
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = `invoice-${orderId}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error("Error downloading invoice:", error);
+      toast.error("Failed to download invoice");
+    }
+  };
+
 
   const isReturnEligible = (orderDate) => {
     const currentDate = new Date();
@@ -530,6 +550,16 @@ const OrderListPage = () => {
                           className="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
                         >
                           Retry Payment
+                        </button>
+                      )}
+
+{order?.paymentStatus === "Completed" && (
+                        <button
+                          onClick={() => handleDownloadInvoice(order._id)}
+                          className="mt-2 inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        >
+                          <FaDownload className="h-4 w-4 mr-2" />
+                          Download Invoice
                         </button>
                       )}
 

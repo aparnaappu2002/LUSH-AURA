@@ -5,7 +5,7 @@ const {showProductListed, showProductone, relatedProducts,filterProduct} = requi
 const {addAddress, showAddress, editAddress, removeAddress} = require("../Controller/addressController")
 const {authToken} = require('../auth/userAuth')
 const {cartAdd, getCartItems, removeCartItem, updateCartQuantity, removeCart} = require("../Controller/cartController")
-const { addOrder, getUserOrder, cancelOrder, returnOrder, verifyPayment, failurePayment, retryPayment } = require("../Controller/orderController")
+const { addOrder, getUserOrder, cancelOrder, returnOrder, verifyPayment, failurePayment, retryPayment, invoiceDownload } = require("../Controller/orderController")
 const {showCategory} = require("../Controller/categoryController")
 const { wishlistAdd, fetchWishlist, wishlistDelete, wishAdd } = require("../Controller/wishlistController")
 const { getCoupons } = require("../Controller/couponController")
@@ -47,6 +47,7 @@ userRoute.post('/cancelproduct/:orderId',authToken,cancelOrder)
 userRoute.post('/returnorder/:orderId',authToken,returnOrder)
 userRoute.post('/failureorder/:orderId',authToken,failurePayment)
 userRoute.post('/retryorder/:orderId',authToken,retryPayment)
+userRoute.get('/download-invoice/:orderId',authToken,invoiceDownload)
 
 userRoute.post('/verifypayment',authToken,verifyPayment)
 

@@ -8,6 +8,7 @@ const {addProduct, showProduct, editProduct}=require('../Controller/productContr
 const { getOrders, editOrders, acceptReturnRequest, rejectReturnRequest, salesReport, downloadReport } = require("../Controller/orderController")
 const { addCoupon, getCoupons, couponStatus, updateCoupon } = require("../Controller/couponController")
 const { addOffer, getOffers, productOffer, categoryOffer, offers, editOffer, getProductOffers } = require("../Controller/offerController")
+const { bestProducts, bestCategories } = require("../Controller/bestController")
 
 
 adminRoute.post('/adminlogin',login)
@@ -49,6 +50,9 @@ adminRoute.put('/editoffers/:id',verifyAdmin,editOffer)
 
 adminRoute.get('/salesreport',verifyAdmin,salesReport)
 adminRoute.get('/downloadreport',verifyAdmin,downloadReport)
+
+adminRoute.get('/bestsellers/products',verifyAdmin,bestProducts)
+adminRoute.get('/bestsellers/categories',verifyAdmin,bestCategories)
 
 
 

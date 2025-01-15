@@ -20,22 +20,24 @@ const WishlistPage = () => {
 
   const fetchWishlist = async () => {
     try {
-      setLoading(true);
-      const response = await axios.get(`wishlist/${userId}`);
-      console.log("Response:", response);
-      
-      if (response.data && response.data.data) {
-        setWishlist(response.data.data);
-      } else {
-        setWishlist([]);
-      }
-      setLoading(false);
+        setLoading(true);
+        const response = await axios.get(`wishlist/${userId}`);
+        console.log("Response:", response);
+        
+        // Check if the response data is an empty array
+        if (response.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
+            setWishlist(response.data.data);
+        } else {
+            setWishlist([]); // Set to an empty array if no items are found
+        }
+        setLoading(false);
     } catch (err) {
-      console.error("Error fetching wishlist:", err);
-      setError('Failed to fetch wishlist. Please try again later.');
-      setLoading(false);
+        console.error("Error fetching wishlist:", err);
+        setError('Failed to fetch wishlist. Please try again later.');
+        setLoading(false);
     }
-  };
+};
+
 
   const removeFromWishlist = async (id) => {
     try {

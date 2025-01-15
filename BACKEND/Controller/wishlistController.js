@@ -70,9 +70,9 @@ const fetchWishlist = async (req, res) => {
     const wishlist = await Wishlist.findOne({ userId }).populate('items.productId');
     console.log("Wishlist:",wishlist)
 
-    if (!wishlist || wishlist.items.length === 0) {
-      return res.status(404).json({ message: 'No wishlist items found.' });
-    }
+    if (!wishlist || wishlist.length === 0) {
+      return res.status(200).json({ data: [] }); // Return empty array with 200 status
+  }
 
     // Return all wishlist products for the user
     res.status(200).json({ 

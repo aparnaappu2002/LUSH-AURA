@@ -22,6 +22,7 @@ import OrderDetails from "../admin/OrderDetails";
 import CouponPage from "../admin/CouponPage";
 import OfferPage from "../admin/OfferPage";
 import SalesReport from "../admin/SalesReport";
+import BestSellers from "../admin/BestSellers";
 
 function Admin() {
   return (
@@ -37,6 +38,7 @@ function Admin() {
         <Route path="/coupons" element={<ProtectRoute>  <CouponPage/> </ProtectRoute>}/>
         <Route path="/offers" element={<ProtectRoute>  <OfferPage/> </ProtectRoute>}/>
         <Route path="/sales" element={<ProtectRoute>  <SalesReport/> </ProtectRoute>}/>
+        <Route path="/bestsellers" element={<ProtectRoute>  <BestSellers/> </ProtectRoute>}/>
       </Route>
       </Routes>
     

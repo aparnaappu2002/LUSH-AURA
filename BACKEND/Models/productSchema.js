@@ -79,7 +79,13 @@ const productSchema = new mongoose.Schema({
         type:String,
         required:false
     },
-    variances:[varianceSchema]
+    variances:[varianceSchema],
+    salesCount: {  
+        type: Number,
+        default: 0,
+        required: true
+    }
+
 
 
 

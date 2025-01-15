@@ -1,5 +1,14 @@
 import React, { useState, useCallback, useEffect } from "react";
-import { PlusIcon, XIcon, PencilIcon, ChevronLeftIcon, ChevronRightIcon, MapPinIcon, CheckCircleIcon, CopyIcon } from 'lucide-react';
+import {
+  PlusIcon,
+  XIcon,
+  PencilIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MapPinIcon,
+  CheckCircleIcon,
+  CopyIcon,
+} from "lucide-react";
 import axios from "../../axios/userAxios";
 import { useSelector } from "react-redux";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,11 +36,8 @@ const Checkout = () => {
   const [showCouponAnimation, setShowCouponAnimation] = useState(false);
   const [productOffers, setProductOffers] = useState({});
   const [shippingCharge, setShippingCharge] = useState(50); // Example flat rate shipping charge
+  const [isCODAllowed, setIsCODAllowed] = useState(true);
 
-
-  
-
-  
 
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
@@ -87,11 +93,15 @@ const Checkout = () => {
           setItems(updatedItems);
           setTotalItems(data.cart.totalItems || 0); // Default to 0 if undefined
           setTotalPrice(totalPrice);
+          setIsCODAllowed(totalPrice <= 1000);
+
         } else {
           console.warn("Cart items are not in the expected format:", data.cart);
           setItems([]);
           setTotalItems(0);
           setTotalPrice(0);
+          setIsCODAllowed(true);
+
         }
       } catch (error) {
         console.error("Error fetching cart items:", error);
@@ -99,6 +109,8 @@ const Checkout = () => {
         setItems([]);
         setTotalItems(0);
         setTotalPrice(0);
+        setIsCODAllowed(true);
+
       }
     }
   }, [userId]);
@@ -383,7 +395,14 @@ const Checkout = () => {
   }, [isFirstOrder, totalPrice]);
 
   const handleAddressChange = (id) => setSelectedAddress(id);
-  const handlePaymentMethodChange = (e) => setPaymentMethod(e.target.value);
+  const handlePaymentMethodChange = (e) => {
+    const method = e.target.value;
+    if (method === "Cash on Delivery" && !isCODAllowed) {
+      toast.error("Cash on Delivery is not available for orders above ₹1000.");
+      return;
+    }
+    setPaymentMethod(method);
+  };
 
   const addNewAddress = async (newAddress) => {
     try {
@@ -399,7 +418,9 @@ const Checkout = () => {
   };
 
   const handleFailedPayment = async () => {
-    await Promise.all(items.map(item => removeFromCart(item.productId, item.variance)));
+    await Promise.all(
+      items.map((item) => removeFromCart(item.productId, item.variance))
+    );
     setItems([]);
     setTotalItems(0);
     setTotalPrice(0);
@@ -410,108 +431,115 @@ const Checkout = () => {
 
   // ... (previous imports and code remain the same until handleOrderSubmit)
 
-const handleOrderSubmit = async (e) => {
-  e.preventDefault();
+  const handleOrderSubmit = async (e) => {
+    e.preventDefault();
 
-  if (!selectedAddress || !paymentMethod) {
-    toast.error("Please select an address and payment method.");
-    return;
-  }
+    if (!selectedAddress || !paymentMethod) {
+      toast.error("Please select an address and payment method.");
+      return;
+    }
 
-  const shippingCharge = 50;
+    const shippingCharge = 50;
 
-  const orderDetails = {
-    userId,
-    items,
-    shippingAddress: selectedAddress,
-    paymentMethod,
-    totalItems,
-    totalPrice,
-    shippingCharge,
-    appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
+    const orderDetails = {
+      userId,
+      items,
+      shippingAddress: selectedAddress,
+      paymentMethod,
+      totalItems,
+      totalPrice,
+      shippingCharge,
+      appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
+    };
+
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post("/addOrder", orderDetails);
+      const { order, razorpayOrder } = response.data;
+
+      if (paymentMethod === "UPI" && razorpayOrder) {
+        // Existing UPI payment logic remains the same
+        const razorpayOptions = {
+          key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+          amount: razorpayOrder.amount,
+          currency: razorpayOrder.currency,
+          name: "LUSH AURA",
+          description: "Order Payment",
+          order_id: razorpayOrder.id,
+          prefill: {
+            name: user.name || "",
+            email: user.email || "",
+            contact: selectedAddress
+              ? addresses.find((addr) => addr._id === selectedAddress)?.phone ||
+                ""
+              : "",
+          },
+          handler: async (response) => {
+            try {
+              const paymentVerification = await axios.post("/verifypayment", {
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+
+              if (paymentVerification.data.success) {
+                toast.success("Order placed successfully!");
+                handleSuccessfulOrder();
+              } else {
+                throw new Error("Payment verification failed.");
+              }
+            } catch (error) {
+              console.error("Payment verification failed:", error);
+              await axios.post(`/failureorder/${order._id}`, {
+                status: "Failed",
+              });
+              toast.error("Payment failed. Please try again.");
+              await handleFailedPayment();
+            }
+          },
+          theme: { color: "#EC4899" },
+          modal: {
+            ondismiss: async () => {
+              await axios.post(`/failureorder/${order._id}`, {
+                status: "Failed",
+              });
+              toast.error("Payment process was cancelled.");
+              await handleFailedPayment();
+            },
+          },
+          retry: false,
+        };
+
+        const razorpay = new Razorpay(razorpayOptions);
+        razorpay.open();
+      } else if (paymentMethod === "Cash on Delivery") {
+        // Handle Cash on Delivery order
+        try {
+          // Update order status to pending/processing for COD
+
+          //toast.success("Order placed successfully!");
+          handleSuccessfulOrder();
+        } catch (error) {
+          console.error("Error processing COD order:", error);
+          await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
+          toast.error("Failed to place order. Please try again.");
+          await handleFailedPayment();
+        }
+      }
+    } catch (error) {
+      console.error("Error placing order:", error);
+      toast.error(
+        error.response?.data?.message ||
+          "Failed to place the order. Please try again."
+      );
+      await handleFailedPayment();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  setIsLoading(true);
-
-  try {
-    const response = await axios.post("/addOrder", orderDetails);
-    const { order, razorpayOrder } = response.data;
-
-    if (paymentMethod === "UPI" && razorpayOrder) {
-      // Existing UPI payment logic remains the same
-      const razorpayOptions = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
-        amount: razorpayOrder.amount,
-        currency: razorpayOrder.currency,
-        name: "LUSH AURA",
-        description: "Order Payment",
-        order_id: razorpayOrder.id,
-        prefill: {
-          name: user.name || "",
-          email: user.email || "",
-          contact: selectedAddress
-            ? addresses.find((addr) => addr._id === selectedAddress)?.phone || ""
-            : "",
-        },
-        handler: async (response) => {
-          try {
-            const paymentVerification = await axios.post("/verifypayment", {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
-
-            if (paymentVerification.data.success) {
-              toast.success("Order placed successfully!");
-              handleSuccessfulOrder();
-            } else {
-              throw new Error("Payment verification failed.");
-            }
-          } catch (error) {
-            console.error("Payment verification failed:", error);
-            await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
-            toast.error("Payment failed. Please try again.");
-            await handleFailedPayment();
-          }
-        },
-        theme: { color: "#EC4899" },
-        modal: {
-          ondismiss: async () => {
-            await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
-            toast.error("Payment process was cancelled.");
-            await handleFailedPayment();
-          },
-        },
-        retry: false,
-      };
-
-      const razorpay = new Razorpay(razorpayOptions);
-      razorpay.open();
-    } else if (paymentMethod === "Cash on Delivery") {
-      // Handle Cash on Delivery order
-      try {
-        // Update order status to pending/processing for COD
-       
-        //toast.success("Order placed successfully!");
-        handleSuccessfulOrder();
-      } catch (error) {
-        console.error("Error processing COD order:", error);
-        await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
-        toast.error("Failed to place order. Please try again.");
-        await handleFailedPayment();
-      }
-    }
-  } catch (error) {
-    console.error("Error placing order:", error);
-    toast.error(error.response?.data?.message || "Failed to place the order. Please try again.");
-    await handleFailedPayment();
-  } finally {
-    setIsLoading(false);
-  }
-};
-
-// ... (rest of the component remains the same)
-  
+  // ... (rest of the component remains the same)
 
   const handleSuccessfulOrder = async () => {
     toast.success("Order placed successfully!");
@@ -696,30 +724,41 @@ const handleOrderSubmit = async (e) => {
                 <label className="block text-lg font-medium text-gray-700 mb-3">
                   Select Payment Method
                 </label>
-                {["Cash on Delivery", "Wallet", "UPI"].map((method) => (
-                  <motion.div
-                    key={method}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="flex items-center p-3 border-2 rounded-lg mb-2 transition-all duration-300 hover:shadow-md"
-                  >
-                    <input
-                      id={method}
-                      name="paymentMethod"
-                      type="radio"
-                      value={method}
-                      checked={paymentMethod === method}
-                      onChange={handlePaymentMethodChange}
-                      className="focus:ring-pink-500 h-5 w-5 text-pink-600"
-                    />
-                    <label
-                      htmlFor={method}
-                      className="ml-3 text-lg cursor-pointer"
-                    >
-                      {method}
-                    </label>
-                  </motion.div>
-                ))}
+                {["UPI", "Wallet", "Cash on Delivery"].map((method) => (
+        <motion.div
+          key={method}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          className={`flex items-center p-3 border-2 rounded-lg mb-2 transition-all duration-300 hover:shadow-md ${
+            method === "Cash on Delivery" && !isCODAllowed ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+        >
+          <input
+            id={method}
+            name="paymentMethod"
+            type="radio"
+            value={method}
+            checked={paymentMethod === method}
+            onChange={handlePaymentMethodChange}
+            className="focus:ring-pink-500 h-5 w-5 text-pink-600"
+            disabled={method === "Cash on Delivery" && !isCODAllowed}
+          />
+          <label
+            htmlFor={method}
+            className={`ml-3 text-lg ${
+              method === "Cash on Delivery" && !isCODAllowed ? "text-gray-400" : "cursor-pointer"
+            }`}
+          >
+            {method}
+          </label>
+        </motion.div>
+      ))}
+      {!isCODAllowed && (
+        <p className="text-red-500 text-sm mt-2">
+          Cash on Delivery is not available for orders above ₹1000.
+        </p>
+      )}
+
               </motion.div>
 
               {/* Order summary */}
@@ -737,12 +776,17 @@ const handleOrderSubmit = async (e) => {
                   Total Items: <span className="font-bold">{totalItems}</span>
                 </p>
                 <p className="text-xl text-gray-900 mb-2">
-  Shipping Charge: <span className="font-bold text-pink-600">₹{shippingCharge}</span>
-</p>
-<p className="text-xl text-gray-900 mb-4">
-  Total Price:{" "}
-  <span className="font-bold text-pink-600">₹{totalPrice + shippingCharge}</span>
-</p>
+                  Shipping Charge:{" "}
+                  <span className="font-bold text-pink-600">
+                    ₹{shippingCharge}
+                  </span>
+                </p>
+                <p className="text-xl text-gray-900 mb-4">
+                  Total Price:{" "}
+                  <span className="font-bold text-pink-600">
+                    ₹{totalPrice + shippingCharge}
+                  </span>
+                </p>
 
                 <div className="mt-6 space-y-4">
                   {currentItems.map((item, index) => (
@@ -753,47 +797,55 @@ const handleOrderSubmit = async (e) => {
                       transition={{ delay: 0.1 * index }}
                       className="border-b py-2 transition-all duration-300 hover:bg-gray-100 rounded-lg p-4"
                     >
-                      
                       <div className="flex justify-between items-start">
-  <div className="flex-grow">
-    <p className="text-sm text-gray-800 font-semibold">{item.productName}</p>
-    <p className="text-xs text-gray-600">Quantity: {item.quantity}</p>
-    <p className="text-xs text-gray-600">
-      {item.variance?.size && `Size: ${item.variance.size}`}
-      {item.variance?.color && `, Color: ${item.variance.color}`}
-      {item.variance?.price && `, Price: ₹${item.variance.price.toFixed(2)}`}
-    </p>
-  </div>
-  <div className="text-right space-y-1">
-    <div className="flex flex-col items-end">
-      {item.variance?.price ? (
-        <>
-          <span className="text-sm text-gray-500 line-through">
-            ₹{(item.variance.price * item.quantity).toFixed(2)}
-          </span>
-          <span className="text-base font-medium text-gray-900">
-            ₹{(item.price * item.quantity).toFixed(2)}
-          </span>
-          <span className="text-sm text-green-600">
-            Save ₹{((item.variance.price - item.price) * item.quantity).toFixed(2)}
-          </span>
-        </>
-      ) : (
-        <span className="text-base font-medium text-gray-900">
-          ₹{(item.price * item.quantity).toFixed(2)}
-        </span>
-      )}
-    </div>
-    <div className="text-xs text-gray-500">
-      Price per item: ₹{item.price.toFixed(2)}
-    </div>
-  </div>
-</div>
-
-
-
-
-
+                        <div className="flex-grow">
+                          <p className="text-sm text-gray-800 font-semibold">
+                            {item.productName}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            Quantity: {item.quantity}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {item.variance?.size &&
+                              `Size: ${item.variance.size}`}
+                            {item.variance?.color &&
+                              `, Color: ${item.variance.color}`}
+                            {item.variance?.price &&
+                              `, Price: ₹${item.variance.price.toFixed(2)}`}
+                          </p>
+                        </div>
+                        <div className="text-right space-y-1">
+                          <div className="flex flex-col items-end">
+                            {item.variance?.price ? (
+                              <>
+                                <span className="text-sm text-gray-500 line-through">
+                                  ₹
+                                  {(
+                                    item.variance.price * item.quantity
+                                  ).toFixed(2)}
+                                </span>
+                                <span className="text-base font-medium text-gray-900">
+                                  ₹{(item.price * item.quantity).toFixed(2)}
+                                </span>
+                                <span className="text-sm text-green-600">
+                                  Save ₹
+                                  {(
+                                    (item.variance.price - item.price) *
+                                    item.quantity
+                                  ).toFixed(2)}
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-base font-medium text-gray-900">
+                                ₹{(item.price * item.quantity).toFixed(2)}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            Price per item: ₹{item.price.toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -1134,4 +1186,3 @@ const handleOrderSubmit = async (e) => {
 };
 
 export default Checkout;
-
