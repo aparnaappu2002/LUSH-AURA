@@ -16,8 +16,8 @@ import Navbar from "../shared/Navbar"
 import OrderListPage from "../account/adress/orderList"
 import WishlistPage from "../user/WishlistPage"
 import WalletPage from "../account/WalletPage"
-
-
+import AboutUs from "../user/About"
+import ContactUs from "../user/Contact"
 function User()
 {
     return(
@@ -36,6 +36,8 @@ function User()
             <Route path="/resetpassword/:token" element={<ResetPassword/>}/>
             <Route path="/cart" element={<CartPage/>}/>
             <Route path="/checkout" element={<Checkout/>}/>
+            <Route path="/about" element={<AboutUs/>}/> 
+            <Route path="/contact" element={<ContactUs/>}/> 
             
 
             
@@ -45,6 +47,7 @@ function User()
              <Route path="/orderlist" element={<OrderListPage/>}/> 
              <Route path="/wishlist" element={<WishlistPage/>}/> 
              <Route path="/wallet" element={<WalletPage/>}/> 
+             
             </Route>
             
             

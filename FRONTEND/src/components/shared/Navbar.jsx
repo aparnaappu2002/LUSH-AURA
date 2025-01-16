@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { ShoppingCart } from 'lucide-react'; // Import the ShoppingCart icon
+import { ShoppingCart, User } from 'lucide-react';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
-
   const navigate = useNavigate();
   const accountDropdownRef = useRef(null);
 
@@ -48,87 +47,66 @@ const Navbar = () => {
               >
                 Shop
               </a>
+              
               <a
-                href="#"
+                onClick={() => navigate("/about")}
                 className="text-white hover:text-gray-200 px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-300"
               >
-                Categories
+                About Us
               </a>
               <a
-                href="#"
+                 onClick={() => navigate("/contact")}
                 className="text-white hover:text-gray-200 px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-300"
               >
-                Best Sellers
+                Contact Us
               </a>
-              <a
+              {/* <a
                 href="#"
                 className="text-white hover:text-gray-200 px-3 py-2 text-sm font-medium cursor-pointer transition-colors duration-300"
               >
                 Brands
-              </a>
+              </a> */}
             </div>
           </div>
 
-          <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            {/* Cart Button */}
+          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+            {/* Enhanced Cart Button */}
             <button
               onClick={() => navigate("/cart")}
-              className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 mr-4"
+              className="relative p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-500"
             >
-              <span className="sr-only">View cart</span>
-              <ShoppingCart className="h-6 w-6" />
+              <ShoppingCart className="h-5 w-5" />
+              {/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                0
+              </span> */}
             </button>
 
-            {/* Account Dropdown */}
-            <div className="ml-3 relative" ref={accountDropdownRef}>
-              <div>
-                <button
-                  onClick={() =>
-                    setIsAccountDropdownOpen(!isAccountDropdownOpen)
-                  }
-                  className="bg-white flex text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
-                  id="user-menu"
-                  aria-haspopup="true"
-                >
-                  <span className="sr-only">Open user menu</span>
-                  <svg
-                    className="h-6 w-6 text-gray-500 hover:text-purple-600 transition duration-300"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                    />
-                  </svg>
-                </button>
-              </div>
+            {/* Enhanced Account Button and Dropdown */}
+            <div className="relative" ref={accountDropdownRef}>
+              <button
+                onClick={() => setIsAccountDropdownOpen(!isAccountDropdownOpen)}
+                className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-500"
+              >
+                <User className="h-5 w-5" />
+              </button>
+              
               {isAccountDropdownOpen && (
-                <div
-                  className="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 z-50"
-                  role="menu"
-                  aria-orientation="vertical"
-                  aria-labelledby="user-menu"
-                >
+                <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transform opacity-100 scale-100 transition-all duration-200 ease-out">
                   <button
                     onClick={() => navigate("/login")}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                   >
                     Log In
                   </button>
                   <button
                     onClick={() => navigate("/signup")}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                   >
                     Register
                   </button>
                   <button
                     onClick={() => navigate("/profile")}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                   >
                     My Account
                   </button>
@@ -137,31 +115,30 @@ const Navbar = () => {
             </div>
           </div>
 
-          {/* Mobile Menu Icon */}
-          <div className="flex items-center sm:hidden">
-            {/* Cart Button for Mobile */}
+          {/* Mobile Menu Icon and Cart */}
+          <div className="flex items-center sm:hidden space-x-2">
             <button
               onClick={() => navigate("/cart")}
-              className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 mr-2"
+              className="relative p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-500"
             >
-              <span className="sr-only">View cart</span>
-              <ShoppingCart className="h-6 w-6" />
+              <ShoppingCart className="h-5 w-5" />
+              {/* <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                0
+              </span> */}
             </button>
 
             <button
               onClick={() => setIsOpen(!isOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-purple-500"
-              aria-expanded="false"
+              className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-purple-500"
             >
               <span className="sr-only">Open main menu</span>
               {!isOpen ? (
                 <svg
-                  className="block h-6 w-6"
+                  className="h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -172,12 +149,11 @@ const Navbar = () => {
                 </svg>
               ) : (
                 <svg
-                  className="block h-6 w-6"
+                  className="h-5 w-5"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
@@ -224,20 +200,7 @@ const Navbar = () => {
           <div className="pt-4 pb-3 border-t border-gray-200">
             <div className="flex items-center px-4">
               <div className="flex-shrink-0">
-                <svg
-                  className="h-10 w-10 text-gray-400"
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                  />
-                </svg>
+                <User className="h-8 w-8 text-gray-400" />
               </div>
               <div className="ml-3">
                 <div className="text-base font-medium text-gray-800">Account</div>
@@ -246,19 +209,19 @@ const Navbar = () => {
             <div className="mt-3 space-y-1">
               <button
                 onClick={() => navigate("/login")}
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200"
               >
                 Log In
               </button>
               <button
                 onClick={() => navigate("/signup")}
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200"
               >
                 Register
               </button>
               <button
                 onClick={() => navigate("/profile")}
-                className="block px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 w-full text-left transition-colors duration-200"
+                className="block w-full text-left px-4 py-2 text-base font-medium text-gray-500 hover:text-gray-800 hover:bg-gray-100 transition-colors duration-200"
               >
                 Profile
               </button>
@@ -271,4 +234,3 @@ const Navbar = () => {
 };
 
 export default Navbar;
-
