@@ -265,26 +265,45 @@ const OrderListPage = () => {
     try {
       const token = localStorage.getItem("token");
 
+      const order = orders.find(o => o._id === orderToCancel.orderId);
+      const item = order?.items?.find(i => i._id === orderToCancel.productId);
+
+      console.log("Item:",item)
+
       // Send cancellation request
       await axios.post(
         `/cancelproduct/${orderToCancel.orderId}`,
-        { productId: orderToCancel.productId },
+        {productId: item.productId},
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+
+
       // Re-fetch orders to reflect updates
-      const userId = user?.id || user?._id;
-      const response = await axios.get(`/orders/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      setOrders(prevOrders => 
+        
+        prevOrders.map(order => {
+          if (order._id === orderToCancel.orderId) {
+            const newTotalPrice = order.totalPrice - item.subtotal;
 
-      const updatedOrders = response.data.filter(
-        (orders) => orders.items.length > 0
-      );
+            return {
+              ...order,
+              totalPrice: newTotalPrice, 
 
-      setOrders(updatedOrders); // Update orders state with the new data
+              items: order.items.map(item => {
+                if (item._id === orderToCancel.productId) {
+                  return {
+                    ...item,
+                    productStatus: "Cancelled"
+                  };
+                }
+                return item;
+              })
+            };
+          }
+          return order;
+        })
+      ); // Update orders state with the new data
       setIsModalOpen(false);
       setOrderToCancel(null);
     } catch (err) {
@@ -599,31 +618,36 @@ const OrderListPage = () => {
                             ₹{(item?.subtotal ?? 0).toFixed(2)}
                           </div>
                           <div>
-                            {item?.productStatus === "Returned" ? (
-                              <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-green-100 text-green-800">
-                                Returned
-                              </span>
-                            ) : item?.productStatus === "Return Failed" ? (
-                              <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-red-100 text-red-800">
-                                Return Failed
-                              </span>
-                            ) : item?.status !== "Cancelled" && (
-                              <button
-                                onClick={() =>
-                                  order.orderStatus === "Delivered" &&
-                                  isReturnEligible(order.orderDate)
-                                    ? openReturnModal(order?._id, item?._id)
-                                    : openProductCancelModal(order?._id, item?._id)
-                                }
-                                className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                              >
-                                {order.orderStatus === "Delivered" &&
-                                  isReturnEligible(order.orderDate)
-                                  ? "Return"
-                                  : "Cancel Product"}
-                              </button>
-                            )}
-                          </div>
+          {item?.productStatus === "Returned" ? (
+            <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-green-100 text-green-800">
+              Returned
+            </span>
+          ) : item?.productStatus === "Return Failed" ? (
+            <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-red-100 text-red-800">
+              Return Failed
+            </span>
+          ) : item?.productStatus === "Cancelled" ? (
+            <span className="inline-flex items-center px-3 py-1 text-sm font-medium rounded-md bg-gray-100 text-gray-800">
+              Cancelled
+            </span>
+          ) : (
+            <button
+              onClick={() =>
+                order.orderStatus === "Delivered" &&
+                isReturnEligible(order.orderDate)
+                  ? openReturnModal(order?._id, item?._id)
+                  : openProductCancelModal(order?._id, item?._id)
+              }
+              className="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-red-700 bg-red-100 hover:bg-red-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              {order.orderStatus === "Delivered" &&
+                isReturnEligible(order.orderDate)
+                ? "Return"
+                : "Cancel Product"}
+            </button>
+          )}
+        </div>
+
                         </div>
                       </li>
                     ))}

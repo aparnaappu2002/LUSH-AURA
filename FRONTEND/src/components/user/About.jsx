@@ -28,7 +28,7 @@ const AboutUs = () => {
             <div className="container mx-auto px-4">
               <div className="text-center">
                 <h1 className="text-5xl font-bold mb-6 text-white">
-                  Welcome to Our Story
+                  Welcome to Lush Aura
                 </h1>
                 <p className="text-xl max-w-3xl mx-auto text-gray-100">
                   We're passionate about delivering exceptional fashion experiences that blend style, quality, and affordability.

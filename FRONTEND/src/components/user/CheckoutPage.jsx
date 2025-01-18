@@ -433,33 +433,36 @@ const Checkout = () => {
 
   const handleOrderSubmit = async (e) => {
     e.preventDefault();
-
+  
     if (!selectedAddress || !paymentMethod) {
       toast.error("Please select an address and payment method.");
       return;
     }
-
-    const shippingCharge = 50;
-
-    const orderDetails = {
-      userId,
-      items,
-      shippingAddress: selectedAddress,
-      paymentMethod,
-      totalItems,
-      totalPrice,
-      shippingCharge,
-      appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
-    };
-
+  
+    // Check if there are items in the cart
+    if (!items.length) {
+      toast.error("Your cart is empty. Please add items before placing an order.");
+      return;
+    }
+  
     setIsLoading(true);
-
+  
     try {
+      const orderDetails = {
+        userId,
+        items,
+        shippingAddress: selectedAddress,
+        paymentMethod,
+        totalItems,
+        totalPrice,
+        shippingCharge: 50,
+        appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
+      };
+  
       const response = await axios.post("/addOrder", orderDetails);
       const { order, razorpayOrder } = response.data;
-
+  
       if (paymentMethod === "UPI" && razorpayOrder) {
-        // Existing UPI payment logic remains the same
         const razorpayOptions = {
           key: import.meta.env.VITE_RAZORPAY_KEY_ID,
           amount: razorpayOrder.amount,
@@ -471,8 +474,7 @@ const Checkout = () => {
             name: user.name || "",
             email: user.email || "",
             contact: selectedAddress
-              ? addresses.find((addr) => addr._id === selectedAddress)?.phone ||
-                ""
+              ? addresses.find((addr) => addr._id === selectedAddress)?.phone || ""
               : "",
           },
           handler: async (response) => {
@@ -482,10 +484,10 @@ const Checkout = () => {
                 razorpay_payment_id: response.razorpay_payment_id,
                 razorpay_signature: response.razorpay_signature,
               });
-
+  
               if (paymentVerification.data.success) {
-                toast.success("Order placed successfully!");
-                handleSuccessfulOrder();
+                // Only clear cart after successful payment verification
+                await handleSuccessfulOrder();
               } else {
                 throw new Error("Payment verification failed.");
               }
@@ -495,7 +497,6 @@ const Checkout = () => {
                 status: "Failed",
               });
               toast.error("Payment failed. Please try again.");
-              await handleFailedPayment();
             }
           },
           theme: { color: "#EC4899" },
@@ -505,75 +506,72 @@ const Checkout = () => {
                 status: "Failed",
               });
               toast.error("Payment process was cancelled.");
-              await handleFailedPayment();
+              setIsLoading(false);
             },
           },
           retry: false,
         };
-
+  
         const razorpay = new Razorpay(razorpayOptions);
         razorpay.open();
       } else if (paymentMethod === "Cash on Delivery") {
-        // Handle Cash on Delivery order
-        try {
-          // Update order status to pending/processing for COD
-
-          //toast.success("Order placed successfully!");
-          handleSuccessfulOrder();
-        } catch (error) {
-          console.error("Error processing COD order:", error);
-          await axios.post(`/failureorder/${order._id}`, { status: "Failed" });
-          toast.error("Failed to place order. Please try again.");
-          await handleFailedPayment();
-        }
+        // For COD, clear cart after order is confirmed
+        await handleSuccessfulOrder();
       }
     } catch (error) {
       console.error("Error placing order:", error);
       toast.error(
         error.response?.data?.message ||
-          "Failed to place the order. Please try again."
+        "Failed to place the order. Please try again."
       );
-      await handleFailedPayment();
-    } finally {
       setIsLoading(false);
     }
   };
+  
+  
 
   // ... (rest of the component remains the same)
 
   const handleSuccessfulOrder = async () => {
-    toast.success("Order placed successfully!");
-
-    // Clear cart items for the placed order
-    await Promise.all(
-      items.map((item) => removeFromCart(item.productId, item.variance))
-    );
-
-    // Reset UI state
-    setItems([]);
-    setTotalItems(0);
-    setTotalPrice(0);
-    setAppliedCoupon(null);
-    setDiscountAmount(0);
-    setCouponCode("");
-
-    // Show order placed animation
-    setOrderPlaced(true);
-
-    setTimeout(() => {
-      setOrderPlaced(false);
-    }, 5000);
+    try {
+      // Show success message first
+      toast.success("Order placed successfully!");
+  
+      // Clear cart items only after successful order
+      await Promise.all(
+        items.map((item) => removeFromCart(item.productId, item.variance))
+      );
+  
+      // Reset UI state
+      setItems([]);
+      setTotalItems(0);
+      setTotalPrice(0);
+      setAppliedCoupon(null);
+      setDiscountAmount(0);
+      setCouponCode("");
+  
+      // Show order placed animation
+      setOrderPlaced(true);
+  
+      // Set timer to hide animation
+      setTimeout(() => {
+        setOrderPlaced(false);
+      }, 5000);
+  
+    } catch (error) {
+      console.error("Error handling successful order:", error);
+      toast.error("Order placed but there was an issue clearing your cart.");
+    }
   };
 
   const removeFromCart = async (productId, variance) => {
     try {
       const payload = { userId, productId, variance };
-      const response = await axios.post(`/cartempty`, payload);
-      console.log("Response from server:", response.data);
-      fetchCartItems();
+      await axios.post(`/cartempty`, payload);
+      return true;
     } catch (error) {
       console.error("Error removing item from cart:", error);
-      toast.error("Failed to remove item from cart. Please try again.");
+      throw error;
     }
   };
 

@@ -7,6 +7,7 @@ import axios from '../../axios/userAxios';
 import { addUser } from '../redux/Slices/userSlice';
 import { addToken } from '../redux/Slices/tokenSlice';
 import { toast,ToastContainer } from 'react-toastify';
+import { Eye, EyeOff } from 'lucide-react';
 
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -18,6 +19,7 @@ const LoginPage = () => {
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [isForgotPasswordLoading, setIsForgotPasswordLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
 
   const validateForm = () => {
@@ -122,19 +124,31 @@ const LoginPage = () => {
               {errors.email && <p className="text-red-600 text-sm">{errors.email}</p>}
             </div>
 
-            <div>
+            <div className="relative">
               <input
                 id="password"
                 name="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 required
                 className="appearance-none rounded-b-md block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-pink-500 focus:border-pink-500 sm:text-sm"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
+              <button
+                type="button"
+                className="absolute right-3 top-2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                {showPassword ? (
+                  <EyeOff className="h-5 w-5" />
+                ) : (
+                  <Eye className="h-5 w-5" />
+                )}
+              </button>
               {errors.password && <p className="text-red-600 text-sm">{errors.password}</p>}
             </div>
+
           </div>
 
           <div className="flex items-center justify-between">

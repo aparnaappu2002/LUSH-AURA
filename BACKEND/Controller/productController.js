@@ -267,11 +267,6 @@ const showProductone = async (req, res) => {
 };
 
 
-
-
-
-
-
 const relatedProducts = async (req, res) => {
   try {
     console.log("Received product ID:", req.params.id);
@@ -318,6 +313,82 @@ const filterProduct = async (req, res) => {
   }
 }
 
+const searchProducts = async (req, res) => {
+  try {
+      const { search, category } = req.query;
+      
+      // Build the search query
+      let query = { status: 'active' }; // Only show active products
+
+      if (category) {
+          query.categoryId = category;
+      }
+
+      if (search) {
+          // Create a text search query across multiple fields
+          query.$or = [
+              { title: { $regex: search, $options: 'i' } },
+              { description: { $regex: search, $options: 'i' } },
+              { highlights: { $regex: search, $options: 'i' } },
+              { specifications: { $regex: search, $options: 'i' } },
+              { sku: { $regex: search, $options: 'i' } }
+          ];
+
+          // Add numeric search capabilities
+          if (!isNaN(search)) {
+              query.$or.push(
+                  { price: parseFloat(search) },
+                  { sizes: parseFloat(search) }
+              );
+          }
+
+          // Search in variances
+          query.$or.push({
+              variances: {
+                  $elemMatch: {
+                      $or: [
+                          { color: { $regex: search, $options: 'i' } },
+                          { size: !isNaN(search) ? parseFloat(search) : null }
+                      ]
+                  }
+              }
+          });
+      }
+
+      // Execute the query with pagination
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 8;
+      const skip = (page - 1) * limit;
+
+      const products = await Products.find(query)
+          .populate('categoryId')
+          .skip(skip)
+          .limit(limit)
+          .sort(req.query.sort || '-createdAt');
+
+      // Get total count for pagination
+      const total = await Products.countDocuments(query);
+
+      res.status(200).json({
+          success: true,
+          products,
+          currentPage: page,
+          totalPages: Math.ceil(total / limit),
+          total
+      });
+
+  } catch (error) {
+      console.error('Search error:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Error searching products',
+          error: error.message
+      });
+  }
+};
+
+
+
 
 
 
@@ -327,5 +398,7 @@ const filterProduct = async (req, res) => {
 
 
   
-  module.exports = { addProduct,showProduct,editProduct,showProductListed,showProductone,relatedProducts,filterProduct};
+  module.exports = { addProduct,showProduct,editProduct,showProductListed,showProductone,relatedProducts,filterProduct,
+    searchProducts,
+  };
   

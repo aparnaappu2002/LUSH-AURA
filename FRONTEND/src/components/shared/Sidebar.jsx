@@ -42,8 +42,8 @@ const Sidebar = () => {
         <SidebarItem icon={<FaGift className="w-5 h-5" />} text="Offers" to="/offers" isOpen={isOpen} />
         <SidebarItem icon={<FaTicketAlt className="w-5 h-5" />} text="Coupons" to="/coupons" isOpen={isOpen} />
         <SidebarItem icon={<FaShoppingCart className="w-5 h-5" />} text="Orders" to="/orders" isOpen={isOpen} />
-        <SidebarItem icon={<FaStar className="w-5 h-5" />} text="Reviews" to="/reviews" isOpen={isOpen} />
-        <SidebarItem icon={<FaImage className="w-5 h-5" />} text="Banners" to="/banners" isOpen={isOpen} />
+        {/* <SidebarItem icon={<FaStar className="w-5 h-5" />} text="Reviews" to="/reviews" isOpen={isOpen} />
+        <SidebarItem icon={<FaImage className="w-5 h-5" />} text="Banners" to="/banners" isOpen={isOpen} /> */}
         <SidebarItem icon={<IoBarChartSharp className="w-5 h-5" />} text="Sales" to="/sales" isOpen={isOpen} />
         <SidebarItem icon={<FaStar className="w-5 h-5" />} text="Best Sellers" to="/bestsellers" isOpen={isOpen} />
 

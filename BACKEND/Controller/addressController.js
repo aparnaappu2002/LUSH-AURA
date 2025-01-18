@@ -43,7 +43,10 @@ const addAddress = async (req, res) => {
       }
   
       console.log('Fetched addresses:', addresses);
-      return res.status(200).json({ message: "Addresses fetched successfully", addresses });
+      return res.status(200).json({ 
+        message: addresses.length ? "Addresses fetched successfully" : "No addresses found", 
+        addresses 
+    });
       
     } catch (error) {
       console.error('Error while fetching addresses:', error);

@@ -230,6 +230,7 @@ const addOrder = async (req, res) => {
 const cancelOrder = async (req, res) => {
   const { productId } = req.body;
   const { orderId } = req.params;
+  console.log("Body:", req.body);
 
   if (!orderId || !productId) {
     return res.status(400).json({ message: "Order ID and Product ID are required." });
@@ -241,51 +242,108 @@ const cancelOrder = async (req, res) => {
       return res.status(404).json({ message: "Order not found." });
     }
 
-    const productIdObj = new mongoose.Types.ObjectId(productId);
+    
+
+    // Convert productId to ObjectId safely
+    let productIdObj;
+    try {
+      productIdObj = new mongoose.Types.ObjectId(productId._id);
+    } catch (error) {
+      return res.status(400).json({ message: "Invalid Product ID format." });
+    }
+
+    console.log("ProductId:", productIdObj);
 
     // Find the item index
-    const itemIndex = order.items.findIndex(item => item._id.equals(productIdObj));
+    const itemIndex = order.items.findIndex(item => {
+      console.log("Checking item:", item.productId.toString(), "against", productIdObj.toString());
+      return item.productId && item.productId.equals(productIdObj);
+    });
+    console.log("Item Index:", itemIndex);
+    
+    
     if (itemIndex === -1) {
       return res.status(404).json({ message: "Product not found in the order." });
     }
 
     const cancelledItem = order.items[itemIndex];
+    console.log("Cancel",cancelledItem)
     const refundAmount = cancelledItem.subtotal;
 
-    // Update wallet with the refunded amount before modifying the order
-    const wallet = await Wallet.findOne({ userId: order.userId });
-    if (!wallet) {
-      return res.status(404).json({ message: "Wallet not found for the user." });
+    // Handle refund to wallet if payment is completed
+    if (order.paymentStatus === 'Completed') {
+      const wallet = await Wallet.findOne({ userId: order.userId });
+      if (!wallet) {
+        return res.status(404).json({ message: "Wallet not found for the user." });
+      }
+
+      wallet.balance += refundAmount;
+      wallet.transactions.push({
+        transactionType: "Credit",
+        amount: refundAmount,
+        description: `Refund for canceled product ${cancelledItem.productName}`,
+        orderId: orderId
+      });
+
+      await wallet.save();
     }
 
-    wallet.balance += refundAmount;
-    wallet.transactions.push({
-      transactionType: "Credit",
-      amount: refundAmount,
-      description: `Refund for canceled product ${cancelledItem.productName}`,
-      orderId: orderId
+    // Fetch the product and update the variance quantity
+    const product = await Product.findById(productIdObj);  // Changed Product to Products
+    console.log("Product found:", product);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found in database." });
+    }
+
+    // Find the matching variance using the order item's variance details
+    const variance = product.variances.find(v =>
+      (!v.size || v.size === cancelledItem.variance.size) && 
+      (!v.color || v.color === cancelledItem.variance.color)
+    );
+
+    if (!variance) {
+      return res.status(404).json({ message: "Matching variance not found for the product." });
+    }
+
+    // Update variance quantity
+    variance.quantity += cancelledItem.quantity;
+    
+    // Update product's availableQuantity
+    product.availableQuantity += cancelledItem.quantity;
+
+    // Update product status if necessary
+    if (product.availableQuantity > 0) {
+      product.stock = "In Stock";
+    }
+
+    await product.save();
+
+    // Update the cancelled item's status
+    order.items[itemIndex].productStatus = "Cancelled";
+    
+    // Recalculate total price
+    order.totalPrice -= refundAmount;
+
+    if (order.items.every(item => item.productStatus === "Cancelled")) {
+      order.orderStatus = "Cancelled";
+    }
+
+    await order.save();
+
+    res.status(200).json({ 
+      message: "Product canceled successfully, order updated, and inventory restored.",
+      updatedOrder: order
     });
-
-    await wallet.save(); // Save the updated wallet before deleting the order or item
-
-    // Remove the item from the order
-    order.items.splice(itemIndex, 1);
-    order.totalPrice -= refundAmount; // Deduct the subtotal of the canceled item
-
-    if (order.items.length === 0) {
-      await Order.deleteOne({ _id: orderId }); // Delete the entire order if no items left
-      return res.status(200).json({ message: "Order canceled and removed successfully, and wallet credited." });
-    }
-
-    await order.save(); // Save the updated order
-
-    res.status(200).json({ message: "Product canceled, order updated, and wallet credited." });
 
   } catch (error) {
     console.error("Error cancelling product:", error);
-    return res.status(500).json({ message: "Internal server error." });
+    return res.status(500).json({ message: "Internal server error.", error: error.message });
   }
 };
+
+
+
 
 
 

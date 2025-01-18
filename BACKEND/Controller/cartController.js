@@ -282,46 +282,74 @@ const removeCartItem = async (req, res) => {
   const removeCart = async (req, res) => {
     try {
       const { userId, productId, variance } = req.body;
-      console.log("Payload in the backend:",req.body)
+      console.log("Payload in the backend:", req.body);
   
-      if (!userId || !productId || !variance) {
-        return res.status(400).json({ error: "Missing required fields" });
+      if (!userId || !productId) {
+        return res.status(400).json({ 
+          success: false, 
+          error: "Missing required fields" 
+        });
       }
   
-      // Find the user's cart
-      const cart = await Cart.findOne({ userId });
-      if (!cart) {
-        return res.status(404).json({ error: "Cart not found for the user" });
-      }
-  
-      // Find the item in the cart and remove it
-      const itemIndex = cart.items.findIndex(
-        (item) =>
-          item.productId.toString() === productId &&
-          item.variance.size === variance.size ||
-          item.variance.color.toLowerCase() === variance.color.toLowerCase()
+      // Use findOneAndUpdate instead of find and save
+      const result = await Cart.findOneAndUpdate(
+        { 
+          userId,
+          'items.productId': productId,
+          '$or': [
+            { 'items.variance.size': variance?.size },
+            { 'items.variance.color': { $regex: new RegExp(variance?.color, 'i') } }
+          ]
+        },
+        {
+          $pull: { 
+            items: { 
+              productId: productId,
+              $or: [
+                { 'variance.size': variance?.size },
+                { 'variance.color': { $regex: new RegExp(variance?.color, 'i') } }
+              ]
+            } 
+          }
+        },
+        { new: true }
       );
   
-      if (itemIndex === -1) {
-        return res.status(404).json({ error: "Item not found in the cart" });
+      if (!result) {
+        return res.status(404).json({ 
+          success: false, 
+          error: "Item not found in the cart" 
+        });
       }
   
-      // Remove the item and update totals
-      cart.items.splice(itemIndex, 1);
+      // Recalculate totals
+      const totalItems = result.items.reduce((acc, item) => acc + item.quantity, 0);
+      const totalPrice = result.items.reduce((acc, item) => acc + item.subtotal, 0);
   
-      // Update totals
-      cart.totalItems = cart.items.reduce((acc, item) => acc + item.quantity, 0);
-      cart.totalPrice = cart.items.reduce((acc, item) => acc + item.subtotal, 0);
-  
-      await cart.save();
+      // Update the totals in a separate operation
+      const updatedCart = await Cart.findOneAndUpdate(
+        { userId },
+        { 
+          $set: { 
+            totalItems,
+            totalPrice
+          }
+        },
+        { new: true }
+      );
   
       res.status(200).json({
+        success: true,
         message: "Item removed from cart successfully",
-        cart,
+        cart: updatedCart
       });
+  
     } catch (error) {
       console.error("Error removing item from cart:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ 
+        success: false, 
+        error: "Internal server error" 
+      });
     }
   };
   
