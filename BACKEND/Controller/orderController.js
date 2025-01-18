@@ -272,10 +272,15 @@ const cancelOrder = async (req, res) => {
 
     // Handle refund to wallet if payment is completed
     if (order.paymentStatus === 'Completed') {
-      const wallet = await Wallet.findOne({ userId: order.userId });
+      let wallet = await Wallet.findOne({ userId: order.userId });
       if (!wallet) {
-        return res.status(404).json({ message: "Wallet not found for the user." });
+        wallet = new Wallet({
+          userId: order.userId,
+          balance: 0,
+          transactions: []
+        });
       }
+
 
       wallet.balance += refundAmount;
       wallet.transactions.push({

@@ -1,8 +1,10 @@
 import React from 'react';
 import Navbar from '../shared/Navbar';
+import { useNavigate } from 'react-router-dom';
 
 
 const HomePage = () => {
+  const navigate = useNavigate()
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
@@ -17,7 +19,8 @@ const HomePage = () => {
             <p className="text-xl mb-8 font-light">
               Indulge in our premium collection of beauty and skincare products, crafted to enhance your natural radiance.
             </p>
-            <button className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 shadow-lg">
+            <button className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-3 px-8 rounded-full transition duration-300 ease-in-out transform hover:scale-105 shadow-lg"
+             onClick={()=>navigate('/shop')}>
               Explore Now
             </button>
           </div>
@@ -62,7 +65,8 @@ const HomePage = () => {
         <div className="absolute bottom-0 left-0 right-0 p-6 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
           <h3 className="text-2xl font-bold mb-2">{item.name}</h3>
           <p className="text-sm mb-4">Discover our {item.name.toLowerCase()} essentials</p>
-          <button className="bg-white text-purple-900 font-bold py-2 px-4 rounded-full hover:bg-purple-100 transition duration-300">
+          <button className="bg-white text-purple-900 font-bold py-2 px-4 rounded-full hover:bg-purple-100 transition duration-300"
+            onClick={()=>navigate('/shop')}>
             Shop Now
           </button>
         </div>
@@ -136,7 +140,8 @@ const HomePage = () => {
               <span className="text-gray-600 ml-2">(48 reviews)</span>
             </div>
 
-            <button className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-full transition duration-300">
+            <button className="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-4 rounded-full transition duration-300"
+             onClick={()=>navigate('/shop')}>
               Add to Cart
             </button>
           </div>

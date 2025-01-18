@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import axios from '../../axios/userAxios';
-import { Star, Heart, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Star, Heart, ChevronLeft, ChevronRight, Search, Filter, SlidersHorizontal } from 'lucide-react';
+
 import Navbar from '../shared/Navbar';
 import { useNavigate } from 'react-router-dom';
 import Breadcrumb from '../shared/BreadCrumbs';
@@ -68,7 +69,7 @@ const ProductCard = ({ product }) => {
         <button
           onClick={(e) => {
             e.stopPropagation();
-            handleAddToCart();
+            handleCardClick();
           }}
           className="mt-4 w-full bg-pink-400 text-white py-2 px-4 rounded-lg text-sm font-medium hover:bg-pink-700 transition-colors duration-300"
         >
@@ -206,45 +207,94 @@ const Shop = () => {
       <Breadcrumb />
       <main>
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center mb-4">
-            <h1 className="text-2xl font-bold text-gray-700">Shop</h1>
-            <div className="flex gap-4">
-              <select
-                value={selectedCategory}
-                onChange={handleCategoryChange}
-                className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring focus:ring-pink-400"
-              >
-                <option value="">All Categories</option>
-                {categories.map((category) => (
-                  <option key={category._id} value={category._id}>
-                    {category.categoryName}
-                  </option>
-                ))}
-              </select>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-pink-800 mb-6">Lush Aura Collection</h1>
+            
+            {/* Enhanced Search and Filter Section */}
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                {/* Search Bar */}
+                <div className="md:col-span-5 relative">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={handleSearchChange}
+                      placeholder="Search for products..."
+                      className="w-full pl-12 pr-4 py-3 border border-pink-100 rounded-lg bg-pink-50/30 text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-transparent transition-all duration-300"
+                    />
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400 w-5 h-5" />
+                  </div>
+                </div>
 
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={handleSearchChange}
-                placeholder="Search products..."
-                className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring focus:ring-pink-400"
-              />
+                {/* Category Filter */}
+                <div className="md:col-span-4">
+                  <div className="relative">
+                    <select
+                      value={selectedCategory}
+                      onChange={handleCategoryChange}
+                      className="w-full appearance-none pl-12 pr-10 py-3 border border-pink-100 rounded-lg bg-pink-50/30 text-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-transparent transition-all duration-300"
+                    >
+                      <option value="">All Categories</option>
+                      {categories.map((category) => (
+                        <option key={category._id} value={category._id}>
+                          {category.categoryName}
+                        </option>
+                      ))}
+                    </select>
+                    <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400 w-5 h-5" />
+                    <ChevronRight className="absolute right-4 top-1/2 transform -translate-y-1/2 rotate-90 text-pink-400 w-5 h-5" />
+                  </div>
+                </div>
+
+                {/* Sort Options */}
+                <div className="md:col-span-3">
+                  <div className="relative">
+                    <select
+                      value={sortOption}
+                      onChange={handleSortChange}
+                      className="w-full appearance-none pl-12 pr-10 py-3 border border-pink-100 rounded-lg bg-pink-50/30 text-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-300 focus:border-transparent transition-all duration-300"
+                    >
+                      <option value="default">Sort By</option>
+                      <option value="priceLowToHigh">Price: Low to High</option>
+                      <option value="priceHighToLow">Price: High to Low</option>
+                      <option value="a-z">Title: A-Z</option>
+                      <option value="z-a">Title: Z-A</option>
+                    </select>
+                    <SlidersHorizontal className="absolute left-4 top-1/2 transform -translate-y-1/2 text-pink-400 w-5 h-5" />
+                    <ChevronRight className="absolute right-4 top-1/2 transform -translate-y-1/2 rotate-90 text-pink-400 w-5 h-5" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Active Filters Display */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {selectedCategory && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-pink-100 text-pink-700">
+                    {categories.find(cat => cat._id === selectedCategory)?.categoryName || 'Selected Category'}
+                    <button
+                      onClick={() => setSelectedCategory('')}
+                      className="ml-2 hover:text-pink-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+                {searchQuery && (
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-pink-100 text-pink-700">
+                    Search: {searchQuery}
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="ml-2 hover:text-pink-800"
+                    >
+                      ×
+                    </button>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
-          <div className="flex justify-between items-center mb-4">
-            <select
-              value={sortOption}
-              onChange={handleSortChange}
-              className="px-4 py-2 border border-gray-300 rounded-md bg-white text-gray-700 focus:outline-none focus:ring focus:ring-pink-400"
-            >
-              <option value="default">Sort By</option>
-              <option value="priceLowToHigh">Price: Low to High</option>
-              <option value="priceHighToLow">Price: High to Low</option>
-              <option value="a-z">Title: A-Z</option>
-              <option value="z-a">Title: Z-A</option>
-            </select>
-          </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {currentProducts.map((product) => (

@@ -102,7 +102,8 @@ const ProductDetails = () => {
     try {
       const response = await axios.get(`/relatedproducts/${productId}`);
       if (response.status === 200 && response.data) {
-        setRelatedProducts(response.data);
+        const activeProducts = response.data.filter(product => product.status === 'active');
+        setRelatedProducts(activeProducts);
       }
     } catch (error) {
       console.error("Error fetching related products:", error);
@@ -574,7 +575,7 @@ const ProductDetails = () => {
                               } hover:bg-pink-400 hover:text-white transition-colors duration-300`}
                               onClick={() => handleSizeChange(variance.size)}
                             >
-                              {variance.size}
+                              {variance.size} ml
                             </button>
                           )
                       )}
@@ -707,35 +708,51 @@ const ProductDetails = () => {
         </div>
 
         {/* Related Products */}
-        {relatedProducts.length > 0 && (
-          <div className="mt-16">
-            <h3 className="text-xl font-bold mb-4">Related Products</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {relatedProducts.map((product) => (
-                <div
-                  key={product._id}
-                  className="border rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow"
-                >
-                  <img
-                    src={product.productImage[0]}
-                    alt={product.title}
-                    className="w-full h-40 object-cover rounded"
-                  />
-                  <h4 className="text-lg font-semibold mt-2">
-                    {product.title}
-                  </h4>
-                  <p className="text-gray-600">₹{product.price}</p>
-                  <button
-                    className="mt-4 bg-pink-400 text-white py-2 px-4 rounded-full font-bold hover:bg-pink-800 w-full"
-                    onClick={() => navigate(`/productdetails/${product._id}`)}
-                  >
-                    View Details
-                  </button>
-                </div>
-              ))}
+       {/* Related Products */}
+       {relatedProducts.length > 0 && (
+  <div className="mt-16">
+    <h3 className="text-xl font-bold mb-4">Related Products</h3>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+      {relatedProducts.map((product) => (
+        product.status === 'active' && (
+          <div
+            key={product._id}
+            className="border rounded-lg p-4 shadow-md hover:shadow-lg transition-shadow flex flex-col h-full"
+          >
+            <div className="flex-grow">
+              <img
+                src={product.productImage[0]}
+                alt={product.title}
+                className="w-full h-40 object-cover rounded"
+              />
+              <h4 className="text-lg font-semibold mt-2 line-clamp-2">
+                {product.title}
+              </h4>
+              <p className="text-gray-600">₹{product.price}</p>
+            </div>
+            <div className="mt-4">
+              <button
+                className="w-full bg-pink-400 text-white py-2 px-4 rounded-full font-bold hover:bg-pink-600 transition-colors duration-300"
+                onClick={() => {
+                  // First navigate to the new product
+                  navigate(`/productdetails/${product._id}`);
+                  // Then fetch the new product details
+                  fetchProductDetails();
+                  fetchRelatedProducts();
+                  // Scroll to top for better UX
+                  window.scrollTo(0, 0);
+                }}
+              >
+                View Details
+              </button>
             </div>
           </div>
-        )}
+        )
+      ))}
+    </div>
+  </div>
+)}
+
 
         {/* Reviews Section */}
         {reviews.length > 0 && (
