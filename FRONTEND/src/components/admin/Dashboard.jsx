@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import axios from '../../axios/adminAxios'; // Using your custom axios instance
+import axios from '../../axios/adminAxios';
 import { ResponsiveContainer, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from 'recharts';
 
 const AdminDashboard = () => {
   const [salesData, setSalesData] = useState(null);
   const [error, setError] = useState(null);
-  const [timeFrame, setTimeFrame] = useState('monthly');
+  const [timeFrame, setTimeFrame] = useState('daily');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -14,7 +14,20 @@ const AdminDashboard = () => {
         setLoading(true);
         const endDate = new Date();
         const startDate = new Date();
-        startDate.setFullYear(endDate.getFullYear() - 1);
+        
+        // Adjust date range based on timeFrame
+        if (timeFrame === 'yearly') {
+          startDate.setFullYear(endDate.getFullYear() - 1);
+        } else if (timeFrame === 'monthly') {
+          startDate.setMonth(endDate.getMonth() - 12);
+        } else {
+          // For daily view, show last 30 days
+          startDate.setDate(endDate.getDate() - 30);
+        }
+
+        // Set times to start and end of day
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
         
         const response = await axios.get('/salesreport', {
           params: {
@@ -23,7 +36,6 @@ const AdminDashboard = () => {
           }
         });
 
-        // Validate required data
         if (!response.data?.orders || !Array.isArray(response.data.orders)) {
           throw new Error('Invalid data received from server');
         }
@@ -38,40 +50,105 @@ const AdminDashboard = () => {
     };
 
     fetchData();
-  }, []);
+  }, [timeFrame]);
 
   const processDataForChart = (data, frame) => {
-    if (!data?.orders) return [];
+    if (!data?.orders || !Array.isArray(data.orders)) return [];
 
-    return Object.values(data.orders.reduce((acc, order) => {
-      const date = new Date(order.orderDate);
-      const key = frame === 'monthly' 
-        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        : date.getFullYear().toString();
+    const processedData = data.orders.reduce((acc, orderData) => {
+      const date = new Date(orderData.orderDate);
+      let key;
+      
+      switch (frame) {
+        case 'daily':
+          key = date.toISOString().split('T')[0];
+          break;
+        case 'monthly':
+          key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+          break;
+        case 'yearly':
+          key = date.getFullYear().toString();
+          break;
+        default:
+          key = date.toISOString().split('T')[0];
+      }
 
       if (!acc[key]) {
-        acc[key] = { 
-          date: key, 
-          sales: 0, 
-          revenue: 0, 
-          items: 0, 
-          discounts: 0 
+        acc[key] = {
+          date: key,
+          sales: 0,
+          revenue: 0,
+          items: 0,
+          discounts: 0
         };
       }
 
-      // Safely access nested properties
-      const orderTotal = order.order?.totalPrice || 0;
-      const finalAmount = order.order?.finalAmount || 0;
-      const itemCount = order.order?.items?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0;
-      const discount = order.totalOrderDiscount || 0;
-
-      acc[key].sales += orderTotal;
-      acc[key].revenue += finalAmount;
-      acc[key].items += itemCount;
-      acc[key].discounts += discount;
+      acc[key].sales += orderData.order.totalPrice || 0;
+      acc[key].revenue += orderData.order.finalAmount || 0;
+      acc[key].items += orderData.order.items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+      acc[key].discounts += orderData.totalOrderDiscount || 0;
 
       return acc;
-    }, {})).sort((a, b) => a.date.localeCompare(b.date));
+    }, {});
+
+    // Convert to array and sort by date
+    return Object.values(processedData).sort((a, b) => a.date.localeCompare(b.date));
+  };
+
+  const formatXAxis = (tickItem) => {
+    if (!tickItem) return '';
+
+    try {
+      switch (timeFrame) {
+        case 'daily':
+          return new Date(tickItem).toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric' 
+          });
+        case 'monthly':
+          const [year, month] = tickItem.split('-');
+          return new Date(year, month - 1).toLocaleDateString('en-US', { 
+            month: 'short', 
+            year: 'numeric' 
+          });
+        case 'yearly':
+          return tickItem;
+        default:
+          return tickItem;
+      }
+    } catch (e) {
+      console.error('Date formatting error:', e);
+      return tickItem;
+    }
+  };
+
+  const formatTooltipDate = (label) => {
+    if (!label) return '';
+    
+    try {
+      switch (timeFrame) {
+        case 'daily':
+          return new Date(label).toLocaleDateString('en-US', { 
+            weekday: 'short',
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+        case 'monthly':
+          const [year, month] = label.split('-');
+          return new Date(year, month - 1).toLocaleDateString('en-US', { 
+            month: 'long',
+            year: 'numeric'
+          });
+        case 'yearly':
+          return `Year ${label}`;
+        default:
+          return label;
+      }
+    } catch (e) {
+      console.error('Tooltip date formatting error:', e);
+      return label;
+    }
   };
 
   if (loading) {
@@ -108,6 +185,7 @@ const AdminDashboard = () => {
             onChange={(e) => setTimeFrame(e.target.value)}
             className="border border-pink-300 rounded p-2 bg-white text-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
           >
+            <option value="daily">Daily</option>
             <option value="monthly">Monthly</option>
             <option value="yearly">Yearly</option>
           </select>
@@ -149,12 +227,34 @@ const AdminDashboard = () => {
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#FFC4D6" />
-                  <XAxis dataKey="date" stroke="#FF7096" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#FF7096"
+                    tickFormatter={formatXAxis}
+                    interval="preserveStartEnd"
+                  />
                   <YAxis stroke="#FF7096" />
-                  <Tooltip contentStyle={{ backgroundColor: '#FFF0F5', border: '1px solid #FFA69E' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#FFF0F5', border: '1px solid #FFA69E' }}
+                    labelFormatter={formatTooltipDate}
+                  />
                   <Legend />
-                  <Area type="monotone" dataKey="sales" stroke="#FFA69E" fillOpacity={1} fill="url(#colorSales)" name="Total Sales" />
-                  <Area type="monotone" dataKey="revenue" stroke="#FF7096" fillOpacity={1} fill="url(#colorRevenue)" name="Revenue" />
+                  <Area 
+                    type="monotone" 
+                    dataKey="sales" 
+                    stroke="#FFA69E" 
+                    fillOpacity={1} 
+                    fill="url(#colorSales)" 
+                    name="Total Sales" 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#FF7096" 
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)" 
+                    name="Revenue" 
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -164,10 +264,18 @@ const AdminDashboard = () => {
               <ResponsiveContainer width="100%" height={400}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#FFC4D6" />
-                  <XAxis dataKey="date" stroke="#FF7096" />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#FF7096"
+                    tickFormatter={formatXAxis}
+                    interval="preserveStartEnd"
+                  />
                   <YAxis yAxisId="left" stroke="#FF7096" />
                   <YAxis yAxisId="right" orientation="right" stroke="#FF7096" />
-                  <Tooltip contentStyle={{ backgroundColor: '#FFF0F5', border: '1px solid #FFA69E' }} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#FFF0F5', border: '1px solid #FFA69E' }}
+                    labelFormatter={formatTooltipDate}
+                  />
                   <Legend />
                   <Bar dataKey="items" fill="#FFB7B2" name="Items Sold" yAxisId="left" />
                   <Bar dataKey="discounts" fill="#FFDAC1" name="Discounts" yAxisId="right" />
