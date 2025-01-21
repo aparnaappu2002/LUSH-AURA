@@ -2,10 +2,9 @@ import axios from 'axios'
 import store from '../components/redux/Store'
 import { addToken } from '../components/redux/Slices/tokenSlice'
 const instance=axios.create({
-    baseURL:import.meta.env.ADMINAXIOS,
+    baseURL:import.meta.env.VITE_ADMINAXIOS,
     withCredentials:true
 })
-
 
 instance.interceptors.request.use(
   (config) => {
