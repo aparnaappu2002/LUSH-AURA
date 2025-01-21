@@ -46,15 +46,17 @@ const addOrder = async (req, res) => {
         return res.status(400).json({ message: "Invalid item details." });
       }
 
-      // const product = await Product.findById(item.productId);
-      // if (!product) {
-      //   throw new Error(`Product with ID ${item.productId} not found.`);
-      // }
+    
 
       const product = await Product.findById(item.productId).populate('categoryId');
       if (!product) {
         throw new Error(`Product with ID ${item.productId} not found.`);
       }
+
+      if (product.status !== 'active') {
+        throw new Error(`Product ${product.title} is not available for order.`);
+      }
+
 
 
       const selectedVariance = product.variances.find(
