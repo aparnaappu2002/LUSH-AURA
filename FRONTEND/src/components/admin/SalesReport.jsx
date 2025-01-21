@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, Download, FileSpreadsheet, FileIcon } from "lucide-react";
 import axios from "../../axios/adminAxios";
+import { Toaster,toast } from "react-hot-toast";
 //import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfYear, endOfYear } from 'date-fns'
 //import { isValid } from 'date-fns';
 import {
@@ -192,7 +193,7 @@ const SalesReport = () => {
       link.click();
     } catch (error) {
       console.error("Error downloading report:", error);
-      alert("Failed to download the report. Please try again.");
+      toast.error("Failed to download the report. Please try again.");
     }
   };
 

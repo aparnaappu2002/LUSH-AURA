@@ -4,7 +4,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { Link,useParams } from 'react-router-dom';
 import { addUser } from '../redux/Slices/userSlice';
 import axios from '../../axios/userAxios';
-import { toast } from 'react-toastify';
+import {toast,Toaster} from "react-hot-toast";
+
 import { FaCamera, FaEdit, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLock, FaHome } from 'react-icons/fa';
 import profileIcon from "../../assets/images/profile-icon-design-free-vector.jpg"
 import Navbar from '../shared/Navbar';
@@ -147,7 +148,7 @@ const Profile = () => {
       >
         {/* Banner and Profile Photo */}
         <div className="relative">
-          <div className="h-48 bg-gradient-to-r from-pink-400 to-pink-600 rounded-t-lg">
+          <div className="h-48 bg-gradient-to-r from-pink-300 to-pink-400 rounded-t-lg">
             <button className="absolute top-4 right-4 bg-white p-2 rounded-full shadow-md hover:bg-gray-100">
               {/* <FaCamera className="w-5 h-5 text-gray-600" /> */}
             </button>
@@ -159,9 +160,9 @@ const Profile = () => {
                 alt="Profile"
                 className="w-24 h-24 rounded-full border-4 border-white"
               />
-              <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md hover:bg-gray-100">
+              {/* <button className="absolute bottom-0 right-0 bg-white p-2 rounded-full shadow-md hover:bg-gray-100">
                 <FaCamera className="w-4 h-4 text-gray-600" />
-              </button>
+              </button> */}
             </div>
           </div>
         </div>
@@ -345,20 +346,20 @@ const Profile = () => {
                     <span>{formData.phone || 'No phone number added'}</span>
                   </div>
                   <div className="flex items-center gap-3 text-gray-600">
-                    <FaHome className="w-5 h-5" />
+                    {/* <FaHome className="w-5 h-5" />
                     <div>
                       <p>{user.address || 'No address added'}</p>
                       <p>{user.pincode && `Pincode: ${user.pincode}`}</p>
-                    </div>
+                    </div> */}
                   </div>
-                  <div className="flex items-center gap-3 text-gray-600">
+                  {/* <div className="flex items-center gap-3 text-gray-600">
                     <FaMapMarkerAlt className="w-5 h-5" />
                     <span>{user.location || 'No location added'}</span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
               
-              <div className="space-y-4">
+              {/* <div className="space-y-4">
                 <h2 className="text-lg font-semibold">Account Statistics</h2>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="bg-gray-50 p-4 rounded-lg">
@@ -370,7 +371,7 @@ const Profile = () => {
                     <div className="text-sm text-gray-600">Reviews</div>
                   </div>
                 </div>
-              </div>
+              </div> */}
             </motion.div>
           )}
         </div>
@@ -385,6 +386,7 @@ const Profile = () => {
         />
       )}
     </div>
+    <Toaster position="top-right" />
     </>
   );
 };

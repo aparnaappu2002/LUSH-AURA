@@ -5,6 +5,7 @@ import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, AlertCircle } from 'lucide-react'
 import Select from 'react-select'
 import axios from '../../axios/adminAxios'
+import { toast,Toaster } from 'react-hot-toast'
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, message, children }) => {
   if (!isOpen) return null;
@@ -462,7 +463,7 @@ const OrderManagement = () => {
     </div>
   </div>
 )}
-
+<Toaster position="top-right" />
     </div>
   )
 }

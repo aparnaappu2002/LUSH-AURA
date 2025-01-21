@@ -116,7 +116,8 @@ const HomePage = () => {
               New
             </div>
             <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity duration-300">
-              <button className="bg-white text-purple-900 font-bold py-2 px-4 rounded-full hover:bg-purple-100 transition duration-300">
+              <button className="bg-white text-purple-900 font-bold py-2 px-4 rounded-full hover:bg-purple-100 transition duration-300"
+                onClick={()=>navigate('/shop')}>
                 Quick View
               </button>
             </div>

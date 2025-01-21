@@ -307,7 +307,7 @@ const OrderListPage = () => {
       setIsModalOpen(false);
       setOrderToCancel(null);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to cancel product");
+      toast.error(err.response?.data?.message || "Failed to cancel product");
     }
   };
 
@@ -349,14 +349,14 @@ const OrderListPage = () => {
         setOrders(refreshedOrders.data);
         setIsReturnModalOpen(false);
         setItemToReturn(null);
-        alert("Return request submitted successfully.");
+        toast.success("Return request submitted successfully.");
       }
     } catch (err) {
       console.error("Error in return request:", {
         message: err.message,
         response: err.response,
       });
-      alert(
+      toast.error(
         err.response?.data?.message ||
           "Failed to submit return request. Please try again later."
       );
@@ -807,6 +807,7 @@ const OrderListPage = () => {
           },
         }}
       />
+       <Toaster position="top-right" />
     </>
   );
 };
