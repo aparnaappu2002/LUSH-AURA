@@ -2,7 +2,7 @@ import axios from 'axios'
 import store from '../components/redux/Store'
 import { addToken } from '../components/redux/Slices/tokenSlice'
 const instance=axios.create({
-    baseURL:'http://localhost:3000/user',
+    baseURL: import.meta.env.USERAXIOS,
     withCredentials:true
 })
 
