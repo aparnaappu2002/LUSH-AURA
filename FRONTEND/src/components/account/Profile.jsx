@@ -39,7 +39,7 @@ const Profile = () => {
           phone: response.data.phoneNumber,
           email: response.data.email,
         });
-        toast.success('User details fetched successfully');
+        //toast.success('User details fetched successfully');
       } catch (error) {
         toast.error(error.response?.data?.message || 'Error fetching user details');
       }

@@ -93,7 +93,7 @@ const EnhancedWalletPage = () => {
           <p className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">
             ₹{(walletData?.balance ?? 0).toFixed(2)}
           </p>
-          <motion.button
+          {/* <motion.button
             className="mt-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-2 rounded-full hover:from-pink-600 hover:to-purple-600 transition duration-300 flex items-center"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -101,10 +101,10 @@ const EnhancedWalletPage = () => {
           >
             <PlusCircle className="mr-2" size={20} />
             Add Funds
-          </motion.button>
+          </motion.button> */}
         </motion.div>
 
-        <AnimatePresence>
+        {/* <AnimatePresence>
           {showAddFunds && (
             <motion.div
               className="bg-white rounded-2xl shadow-xl p-8 mb-8"
@@ -132,7 +132,7 @@ const EnhancedWalletPage = () => {
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </AnimatePresence> */}
 
         <motion.div
           className="bg-white rounded-2xl shadow-xl p-8"

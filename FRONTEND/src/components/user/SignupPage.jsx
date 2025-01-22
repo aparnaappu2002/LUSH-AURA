@@ -74,10 +74,11 @@ const SignupPage = () => {
     try {
       // Make the API call to your backend
       const response = await axios.post('/signup', formData);
-      //console.log('Response:', response.data);
+      console.log('Response:', response.data);
 
       // Navigate to the login page upon successful registration
-      navigate('/otpverification');
+      navigate('/otpverification', { state: { email: response.data.email } });
+
     } catch (error) {
       console.error('Error during signup:', error.response?.data || error.message);
       setSubmissionError(error.response?.data?.message || 'An error occurred. Please try again.');

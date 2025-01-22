@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import axios from '../../axios/userAxios'
 import { useNavigate } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 
 const OTPVerification = () => {
   const [otp, setOtp] = useState(['', '', '', '', '', ''])
@@ -11,6 +12,13 @@ const OTPVerification = () => {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const location = useLocation();
+  const email = location.state?.email;
+
+  if (!email) {
+    console.error('Email not found in location state.');
+    // Handle the error, maybe redirect back to signup or show an error message
+}
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -44,7 +52,7 @@ const OTPVerification = () => {
       
       const response = await axios.post(
         '/resendotp', // Endpoint for resending OTP
-        {},
+        {email},
         {
           headers: {
             'Content-Type': 'application/json',
@@ -79,6 +87,7 @@ const OTPVerification = () => {
     e.preventDefault();
     const enteredOtp = otp.join('');
     console.log("Entered OTP:", enteredOtp);
+    
 
     try {
         setMessage('');
@@ -86,7 +95,7 @@ const OTPVerification = () => {
 
         const response = await axios.post(
             '/otpverification',
-            { otp: enteredOtp },
+            { otp: enteredOtp , email},
             {
                 headers: {
                     'Content-Type': 'application/json',

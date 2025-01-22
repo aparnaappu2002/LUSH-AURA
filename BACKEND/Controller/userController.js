@@ -4,6 +4,9 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config(); // Make sure .env is loaded
 const nodemailer = require('nodemailer');
 const crypto = require('crypto');
+const NodeCache = require("node-cache");
+const Otp =require('../Models/otpSchema')
+const mongoose = require('mongoose');
 
 // Helper function to hash the password
 const securePassword = async (password) => {
@@ -20,7 +23,6 @@ const generateOtp = () => {
 };
 
 const sendVerificationMail = async (email, otp) => {
-    console.log('Sending OTP to email:', email);  
     try {
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -33,18 +35,96 @@ const sendVerificationMail = async (email, otp) => {
             },
         });
 
+        const emailTemplate = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        color: #333333;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 0 auto;
+                        padding: 20px;
+                        background-color: #ffffff;
+                    }
+                    .header {
+                        text-align: center;
+                        padding: 20px 0;
+                        background-color: #FDF2F8;
+                    }
+                    .logo {
+                        font-size: 24px;
+                        color: #BE185D;
+                        font-weight: bold;
+                    }
+                    .content {
+                        padding: 30px 20px;
+                        text-align: center;
+                    }
+                    .otp-code {
+                        font-size: 32px;
+                        font-weight: bold;
+                        color: #BE185D;
+                        letter-spacing: 5px;
+                        margin: 20px 0;
+                    }
+                    .message {
+                        margin: 20px 0;
+                        color: #666666;
+                    }
+                    .footer {
+                        text-align: center;
+                        padding: 20px;
+                        font-size: 12px;
+                        color: #999999;
+                        border-top: 1px solid #eeeeee;
+                    }
+                    .note {
+                        font-size: 13px;
+                        color: #666666;
+                        font-style: italic;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <div class="logo">LUSH AURA</div>
+                    </div>
+                    <div class="content">
+                        <h2>Verify Your Email Address</h2>
+                        <p class="message">Thank you for choosing Lush Aura! To complete your registration, please use the verification code below:</p>
+                        <div class="otp-code">${otp}</div>
+                        <p class="message">This code will expire in 10 minutes.</p>
+                        <p class="note">If you didn't request this verification code, please ignore this email.</p>
+                    </div>
+                    <div class="footer">
+                        <p>© ${new Date().getFullYear()} Lush Aura. All rights reserved.</p>
+                        <p>This is an automated message, please do not reply to this email.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+        `;
+
         const info = await transporter.sendMail({
-            from: process.env.NODEMAILER_EMAIL,
+            from: {
+                name: 'Lush Aura',
+                address: process.env.NODEMAILER_EMAIL
+            },
             to: email,
-            subject: 'Verify Your Email',
-            text: `Your OTP is ${otp}`,
-            html: `<b>Your OTP is ${otp}</b>`,
+            subject: 'Verify Your Email - Lush Aura',
+            text: `Your verification code is: ${otp}. This code will expire in 10 minutes.`,
+            html: emailTemplate,
         });
-        console.log('Email sent:', info);
 
         return info.accepted.length > 0;
     } catch (error) {
-        console.log('Error sending email', error);
+        console.error('Error sending verification email:', error);
         return false;
     }
 };
@@ -72,22 +152,38 @@ const signUp = async (req, res) => {
         }
 
         // Hash the password and temporarily store user data along with OTP in the session
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const otpEntry = new Otp({
+            email: email,
+            otp: otp,
+            firstName: firstName,
+            lastName: lastName,
+            phoneNumber: phoneNumber,
+            password: hashedPassword, // Temporarily store password in case the OTP verification is successful
+        });
+
+        await otpEntry.save();
         
-        req.session.user = {
-            firstName,
-            lastName,
-            email,
-            phoneNumber,
-            password,
-        };
-        req.session.otp = otp;
+        // req.session.user = {
+        //     firstName,
+        //     lastName,
+        //     email,
+        //     phoneNumber,
+        //     password,
+        // };
+        // req.session.otp = otp;
 
         // console.log(req.session.user)
-         console.log(req.session.otp)
+         //console.log(req.session.otp)
+
+         
 
         return res.status(200).json({
             message: "User registered. OTP sent to email for verification",
             email,
+            
         });
     } catch (error) {
         console.error('Sign Up Error:', error);
@@ -97,35 +193,57 @@ const signUp = async (req, res) => {
 
 
 const otpVerification = async (req, res) => {
-    console.log("Session Data in OTP Verification:", req.session);
+   // console.log("Session Data in OTP Verification:", req.session);
 
-    const { firstName, lastName, email, phoneNumber, password } = req.session.user;
-    const HashPassword = await securePassword(password);
-    const { otp } = req.body;
+    //const { firstName, lastName, email, phoneNumber, password } = req.session.user;
+    const { otp, email } = req.body;
+    //const HashPassword = await securePassword(password);
+    //const { otp } = req.body;
 
     try {
-        if (!req.session.otp || req.session.otp !== otp) {
+        // if (!req.session.otp || req.session.otp !== otp) {
+        //     return res.status(400).json({ success: false, message: "Invalid OTP" });
+        // }
+
+        const otpEntry = await Otp.findOne({ email });
+
+        if (!otpEntry || otpEntry.otp !== otp) {
             return res.status(400).json({ success: false, message: "Invalid OTP" });
         }
 
-        if (otp === req.session.otp) {
-            const user = new User({
-                firstName,
-                lastName,
-                email,
-                password: HashPassword,
-                phoneNumber,
-                status: 'active',
-                isAdmin: 0,
-            });
-            await user.save();
-            console.log(user);
+        // if (otp === req.session.otp) {
+        //     const user = new User({
+        //         firstName,
+        //         lastName,
+        //         email,
+        //         password: HashPassword,
+        //         phoneNumber,
+        //         status: 'active',
+        //         isAdmin: 0,
+        //     });
+        //     await user.save();
+        //     console.log(user);
 
-            // Respond with a success flag
-            return res.json({ success: true, message: "User created" });
-        } else {
-            return res.status(400).json({ success: false, message: "Invalid OTP" });
-        }
+        //     // Respond with a success flag
+        //     return res.json({ success: true, message: "User created" });
+        // } else {
+        //     return res.status(400).json({ success: false, message: "Invalid OTP" });
+        // }
+
+        const user = new User({
+            firstName: otpEntry.firstName,
+            lastName: otpEntry.lastName,
+            email: otpEntry.email,
+            phoneNumber: otpEntry.phoneNumber,
+            password: otpEntry.password, // Password should already be hashed
+            status: 'active',
+            isAdmin: 0,
+        });
+        await user.save();
+
+        // Delete the OTP entry after successful verification
+        await Otp.deleteOne({ email });
+        return res.json({ success: true, message: "User created" });
     } catch (error) {
         console.error("Error during OTP verification:", error);
         return res.status(500).json({ success: false, message: "Server error" });
@@ -136,10 +254,11 @@ const otpVerification = async (req, res) => {
 
 const resendOtp = async (req, res) => {
     try {
-        const email = req.session.user.email; // Retrieve the email from session
+        // Retrieve the email from the request body
+        const { email } = req.body;
 
         if (!email) {
-            return res.status(400).json({ message: 'No email found in session' });
+            return res.status(400).json({ message: 'Email is required to resend OTP' });
         }
 
         // Generate a new OTP
@@ -149,12 +268,26 @@ const resendOtp = async (req, res) => {
         const emailSent = await sendVerificationMail(email, newOtp);
 
         if (!emailSent) {
-            return res.status(400).json({ message: 'Failed to resend OTP' });
+            return res.status(500).json({ message: 'Failed to resend OTP' });
         }
 
-        // Update session with new OTP
-        req.session.otp = newOtp;
-        console.log('Resent OTP:', req.session.otp);
+        // Update or insert the new OTP in the database
+        const existingOtp = await Otp.findOne({ email });
+        if (existingOtp) {
+            // Update the existing OTP
+            existingOtp.otp = newOtp;
+            existingOtp.createdAt = new Date();
+            await existingOtp.save();
+        } else {
+            // Create a new OTP entry
+            const otpEntry = new Otp({
+                email: email,
+                otp: newOtp,
+            });
+            await otpEntry.save();
+        }
+
+        console.log('Resent OTP for email:', email);
 
         return res.status(200).json({ message: 'OTP resent successfully' });
     } catch (error) {
@@ -162,6 +295,7 @@ const resendOtp = async (req, res) => {
         return res.status(500).json({ message: 'Error in resending OTP' });
     }
 };
+
 
 const googleLogin = async (req, res) => {
     const { email, email_verified, firstName, lastName, id } = req.body;

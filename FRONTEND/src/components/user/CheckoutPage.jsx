@@ -64,7 +64,7 @@ const Checkout = () => {
         setAddresses(data.addresses || []);
       } catch (error) {
         console.error("Error fetching addresses:", error);
-        toast.error("Failed to fetch addresses. Please try again.");
+        //toast.error("Failed to fetch addresses. Please try again.");
       }
     }
   }, [userId]);

@@ -14,8 +14,12 @@ const getWalletData = async (req, res) => {
       const wallet = await Wallet.findOne({ userId: new mongoose.Types.ObjectId(userId) });
   
       if (!wallet) {
-        return res.status(404).json({ message: "Wallet not found" });
-      }
+        // User does not have a wallet
+        return res.status(200).json({ 
+            message: "User does not have a wallet", 
+            walletExists: false 
+        });
+    }
   
       // Respond with the wallet data
       res.status(200).json(wallet);
