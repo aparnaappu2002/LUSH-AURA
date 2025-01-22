@@ -1,12 +1,16 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { ShoppingCart, User } from 'lucide-react';
+import { useSelector,useDispatch } from "react-redux";
+import { removeUser } from "../redux/Slices/userSlice";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
   const navigate = useNavigate();
   const accountDropdownRef = useRef(null);
+  const user = useSelector((state) => state.user.user);
+  const dispatch=useDispatch()
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -23,6 +27,11 @@ const Navbar = () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
+
+  const handleLogout = () => {
+    dispatch(removeUser()); // Clear user from Redux store
+    navigate("/login"); // Navigate to login page
+  };
 
   return (
     <nav className="bg-gradient-to-r from-purple-500 to-pink-600 shadow-lg sticky top-0 z-50">
@@ -92,24 +101,37 @@ const Navbar = () => {
               
               {isAccountDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg py-1 bg-white ring-1 ring-black ring-opacity-5 focus:outline-none transform opacity-100 scale-100 transition-all duration-200 ease-out">
-                  <button
-                    onClick={() => navigate("/login")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    Log In
-                  </button>
-                  <button
-                    onClick={() => navigate("/signup")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    Register
-                  </button>
-                  <button
-                    onClick={() => navigate("/profile")}
-                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
-                  >
-                    My Account
-                  </button>
+                  {user ? (
+                    <>
+                      <button
+                        onClick={handleLogout}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      >
+                        Log Out
+                      </button>
+                      <button
+                        onClick={() => navigate("/profile")}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      >
+                        My Account
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => navigate("/login")}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      >
+                        Log In
+                      </button>
+                      <button
+                        onClick={() => navigate("/signup")}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors duration-200"
+                      >
+                        Register
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
