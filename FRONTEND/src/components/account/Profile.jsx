@@ -30,7 +30,7 @@ const Profile = () => {
     const fetchUserDetails = async () => {
 
       try {
-        const response = await axios.get(`/profile/${user.id}`);
+        const response = await axios.get(`/profile/${user.id || user._id}`);
         console.log("Response:",response)
         addUser(response.data.user);
         setFormData({
