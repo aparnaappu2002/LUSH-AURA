@@ -132,14 +132,17 @@ const wishAdd = async (req, res) => {
     }
 
     // Check if the item already exists in the cart
-    const existingItemIndex = cart.items.findIndex(
+    const existingItemIndex = cart.items.filter(
       (item) =>
-        item.productId.toString() === productId &&
-        item.variance?.size === variance.size &&
-        item.variance?.color?.toLowerCase() === variance.color?.toLowerCase()
+        item.productId.toString() === productId._id  &&
+         item.variance?.size === variance.size &&
+         item.variance?.color?.toLowerCase() === variance.color?.toLowerCase()
     );
+    console.log("exist:",existingItemIndex)
+    console.log("cart",cart.items)
 
-    if (existingItemIndex >= 0) {
+
+    if (existingItemIndex.length > 0) {
       // If item already exists in the cart, respond with a message
       return res.status(400).json({
         error: "Product already exists in the cart with the selected variance.",
