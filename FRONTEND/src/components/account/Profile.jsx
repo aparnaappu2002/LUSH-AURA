@@ -102,7 +102,7 @@ const Profile = () => {
     e.preventDefault();
     console.log("form:",formData)
     try {
-      const response = await axios.put(`/changeUserInfo/${user.id}`, formData);
+      const response = await axios.put(`/changeUserInfo/${user.id || user._id}`, formData);
       console.log("Response:", response.data);
 
       toast.success(response.data.message);
