@@ -24,6 +24,7 @@ const SalesReport = () => {
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [ordersPerPage] = useState(9);
+  const [error, setError] = useState(""); 
 
   const [salesData, setSalesData] = useState({
     orders: [],
@@ -66,8 +67,15 @@ const SalesReport = () => {
           end = endOfYear(startDate);
           break;
         case "custom":
+          if (startDate > endDate) {
+            setError("Start date cannot be after end date.");
+            setLoading(false);
+            return;
+          }
+          setError(""); // Clear error if valid
           start = startOfDay(startDate);
-          end = endOfDay(endDate); // Ensure we use the selected end date for custom range
+          end = endOfDay(endDate);
+
           break;
         default:
           start = startOfDay(new Date());
@@ -139,30 +147,54 @@ const SalesReport = () => {
         newEndDate = endOfYear(currentDate);
         break;
       case "custom":
-        // Retain the currently selected dates for custom range
-        return;
+        newStartDate = currentDate;
+        newEndDate = currentDate;
       default:
         break;
     }
 
     setStartDate(newStartDate);
     setEndDate(newEndDate);
+    setError("");
   };
 
-  const handleDateChange = (date, setterFunction) => {
-    if (date && isValid(new Date(date))) {
-      setterFunction(new Date(date));
+  const handleDateChange = (date, setterFunction, isStart = true) => {
+    const newDate = new Date(date);
+    
+    // First check if it's a valid date
+    if (!isValid(newDate)) {
+      setError("Please enter a valid date");
+      return;
     }
+
+    // For start date
+    if (isStart) {
+      if (dateRange === 'custom' && newDate > endDate) {
+        setError("Start date cannot be after end date");
+        return;
+      }
+      setStartDate(newDate);
+    } 
+    // For end date
+    else {
+      if (dateRange === 'custom' && newDate < startDate) {
+        setError("End date cannot be before start date");
+        return;
+      }
+      setEndDate(newDate);
+    }
+    
+    // Clear error if validation passes
+    setError("");
   };
+
 
   const handleStartDateChange = (e) => {
-    e.preventDefault(); // Prevent page reload on date change
-    handleDateChange(e.target.value, setStartDate);
+    handleDateChange(e.target.value, setStartDate, true);
   };
 
   const handleEndDateChange = (e) => {
-    e.preventDefault(); // Prevent page reload on date change
-    handleDateChange(e.target.value, setEndDate);
+    handleDateChange(e.target.value, setEndDate, false);
   };
 
   const formatDateForInput = (date) => {
@@ -288,27 +320,47 @@ const SalesReport = () => {
         {dateRange === "custom" && (
           <>
             <input
-              type="date"
-              value={formatDateForInput(startDate)}
-              onChange={handleStartDateChange}
-              className="border border-pink-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-            <input
-              type="date"
-              value={formatDateForInput(endDate)}
-              onChange={handleEndDateChange}
-              className="border border-pink-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
+            type="date"
+            value={formatDateForInput(startDate)}
+            onChange={handleStartDateChange}
+            className={`border ${
+              error && error.includes("Start date") 
+                ? "border-red-500 focus:ring-red-500" 
+                : "border-pink-300 focus:ring-pink-500"
+            } rounded-md px-3 py-2 focus:outline-none focus:ring-2`}
+          />
+          {error && error.includes("Start date") && (
+            <span className="text-red-500 text-sm mt-1">{error}</span>
+          )}
+             <input
+            type="date"
+            value={formatDateForInput(endDate)}
+            onChange={handleEndDateChange}
+            className={`border ${
+              error && error.includes("End date") 
+                ? "border-red-500 focus:ring-red-500" 
+                : "border-pink-300 focus:ring-pink-500"
+            } rounded-md px-3 py-2 focus:outline-none focus:ring-2`}
+          />
+          {error && error.includes("End date") && (
+            <span className="text-red-500 text-sm mt-1">{error}</span>
+          )}
           </>
         )}
 
-        <button
-          onClick={fetchSalesData}
-          className="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600 transition-colors duration-300"
-        >
-          <Calendar className="inline-block mr-2" size={18} />
-          Apply Filter
-        </button>
+<button
+  onClick={() => {
+    if (!error) fetchSalesData();
+    else toast.error(error); // Show error as a toast
+  }}
+  className="bg-pink-500 text-white px-4 py-2 rounded-md hover:bg-pink-600 transition-colors duration-300"
+  disabled={error !== ""}
+>
+  <Calendar className="inline-block mr-2" size={18} />
+  Apply Filter
+</button>
+
+
       </div>
 
       {loading ? (
@@ -449,6 +501,7 @@ const SalesReport = () => {
           No sales data available for the selected period.
         </p>
       )}
+      <Toaster position="top-right" />
     </div>
   );
 };
