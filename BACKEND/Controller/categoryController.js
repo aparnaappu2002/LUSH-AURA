@@ -15,6 +15,7 @@ const addCategory = async (req, res) => {
     if (exists) {
       return res.status(400).json({ message: "This category already exists" });
     }
+    console.log("exist:",exists)
 
     const newCat = new Category({
       categoryName: newCategory,
@@ -62,6 +63,12 @@ const editCategory = async (req, res) => {
   const { editNameCategory } = req.body;
 
   try {
+    const existingCategory = await Category.findOne({ categoryName: editNameCategory });
+
+    if (existingCategory && existingCategory._id.toString() !== id) {
+      return res.status(409).json({ message: `Category name '${editNameCategory}' already exists.` });
+    }
+    
     const updatedCategory = await Category.findByIdAndUpdate(
       id,
       { categoryName: editNameCategory },

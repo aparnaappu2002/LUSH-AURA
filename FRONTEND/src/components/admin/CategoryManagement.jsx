@@ -80,7 +80,8 @@ export default function CategoryManagement() {
   };
 
   
-  const handleEditCategory = async () => {
+  const handleEditCategory = async (e) => {
+    e.preventDefault()
     try {
       const response = await axios.patch(`/editcategory/${selectedId}`, {
         editNameCategory,
@@ -89,10 +90,16 @@ export default function CategoryManagement() {
       setIsModalOpen(false);
       toast.success(response.data.message);
     } catch (error) {
-      console.error('Error editing category:', error);
-      toast.error('Failed to edit category');
+      if (error.response && error.response.status === 409) {
+        toast.error(error.response.data.message); // Show the error message from the server
+      } else {
+        console.error('Error editing category:', error);
+        toast.error('Failed to edit category'); // Show a generic error message
+      }
     }
   };
+
+  
 
   const handleAddOffer = (categoryId) => {
     setSelectedId(categoryId);
