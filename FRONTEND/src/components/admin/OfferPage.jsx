@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../axios/adminAxios';
 import { PencilIcon, TrashIcon, XIcon } from 'lucide-react';
-import { format } from 'date-fns';
+import { format,startOfDay,isBefore } from 'date-fns';
 
 import {toast,Toaster} from "react-hot-toast"
 
 export default function OfferPage() {
   const [offers, setOffers] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [errors, setErrors] = useState({});
   const [currentOffer, setCurrentOffer] = useState({
     offerName: '',
     description: '',
@@ -33,25 +34,93 @@ export default function OfferPage() {
     }
   };
 
+  const validateOffer = () => {
+    const newErrors = {};
+    
+    // Validate offer name
+    if (!currentOffer.offerName.trim()) {
+      newErrors.offerName = 'Offer name is required';
+    }
+
+    // Validate description
+    if (!currentOffer.description.trim()) {
+      newErrors.description = 'Description is required';
+    }
+
+    // Validate discount percentage
+    if (currentOffer.discountPercentage < 0 || currentOffer.discountPercentage > 100) {
+      newErrors.discountPercentage = 'Discount must be between 0 and 100';
+    }
+
+    // Validate dates
+    const startDate = new Date(currentOffer.startDate);
+    const endDate = new Date(currentOffer.endDate);
+    const today = startOfDay(new Date()); 
+    
+
+    if (!currentOffer.startDate) {
+      newErrors.startDate = 'Start date is required';
+    } else if (isBefore(startDate, today)) {
+      // Only show error if start date is before today
+      newErrors.startDate = 'Start date cannot be before today';
+    }
+
+    if (!currentOffer.endDate) {
+      newErrors.endDate = 'End date is required';
+    } else if (endDate <= startDate) {
+      newErrors.endDate = 'End date must be after start date';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentOffer(prev => ({ ...prev, [name]: value }));
+    // Clear error for the field being edited
+    setErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+
+    const checkDuplicateOfferName = async (offerName, currentOfferId) => {
+    try {
+      const existingOffers = offers.filter(offer => 
+        offer.offerName.toLowerCase() === offerName.toLowerCase() && 
+        offer._id !== currentOfferId
+      );
+      return existingOffers.length > 0;
+    } catch (error) {
+      console.error('Error checking duplicate offer:', error);
+      return false;
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Submitting offer:', currentOffer); // Log to verify the currentOffer before submission
-  
+    
+    // Validate the form
+    if (!validateOffer()) {
+      toast.error('Please fix the validation errors');
+      return;
+    }
+
+    // Check for duplicate offer name
+    const isDuplicate = await checkDuplicateOfferName(currentOffer.offerName, currentOffer._id);
+    if (isDuplicate) {
+      setErrors(prev => ({ ...prev, offerName: 'An offer with this name already exists' }));
+      toast.error('An offer with this name already exists');
+      return;
+    }
+
     try {
       const updatedOffer = { ...currentOffer };
-  
+      
       // Ensure products are properly retained unless explicitly modified
       if (!updatedOffer.products || updatedOffer.products.length === 0) {
-        updatedOffer.products = currentOffer.products; // Ensure products are not lost
+        updatedOffer.products = currentOffer.products;
       }
-  
-      console.log('Updated Offer Payload:', updatedOffer); // Check payload before sending
-  
+
       await axios.put(`/editoffers/${currentOffer._id}`, updatedOffer);
       toast.success('Offer updated successfully');
       setIsModalOpen(false);
@@ -61,15 +130,19 @@ export default function OfferPage() {
         discountPercentage: 0,
         startDate: '',
         endDate: '',
-        products: [], // Ensure products are retained unless modified
+        products: [],
         category: '',
         status: 'active'
       });
-  
+      setErrors({});
       fetchOffers();
     } catch (error) {
       console.error('Error updating offer:', error);
-      toast.error('Failed to update offer');
+      if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to update offer');
+      }
     }
   };
   
@@ -176,6 +249,7 @@ export default function OfferPage() {
                   className="mt-1 block w-full border border-pink-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500"
                   required
                 />
+                {errors.offerName && <p className="mt-1 text-sm text-red-500">{errors.offerName}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-pink-700">Description</label>
@@ -185,6 +259,7 @@ export default function OfferPage() {
                   onChange={handleInputChange}
                   className="mt-1 block w-full border border-pink-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500"
                 ></textarea>
+                 {errors.description && <p className="mt-1 text-sm text-red-500">{errors.description}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-pink-700">Discount Percentage</label>
@@ -198,6 +273,7 @@ export default function OfferPage() {
                   max="100"
                   required
                 />
+                {errors.discountPercentage && <p className="mt-1 text-sm text-red-500">{errors.discountPercentage}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-pink-700">Start Date</label>
@@ -209,6 +285,7 @@ export default function OfferPage() {
                   className="mt-1 block w-full border border-pink-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500"
                   required
                 />
+                {errors.startDate && <p className="mt-1 text-sm text-red-500">{errors.startDate}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-pink-700">End Date</label>
@@ -220,6 +297,7 @@ export default function OfferPage() {
                   className="mt-1 block w-full border border-pink-300 rounded-md shadow-sm p-2 focus:ring-pink-500 focus:border-pink-500"
                   required
                 />
+                {errors.endDate && <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-pink-700">Status</label>
