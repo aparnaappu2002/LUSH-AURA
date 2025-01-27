@@ -48,6 +48,18 @@ const addCoupon = async (req, res) => {
       return res.status(201).json(savedCoupon);
     } catch (error) {
       console.error('Error creating coupon:', error);
+
+      if (error.code === 11000) {
+        // Duplicate key error
+        const duplicateField = Object.keys(error.keyValue)[0];
+        const duplicateValue = error.keyValue[duplicateField];
+        return res.status(409).json({
+          message: `Duplicate value for field '${duplicateField}': '${duplicateValue}'. Please use a unique value.`,
+          field: duplicateField,
+          value: duplicateValue,
+        });
+      }
+  
       return res.status(500).json({ message: 'Internal server error.' });
     }
   }

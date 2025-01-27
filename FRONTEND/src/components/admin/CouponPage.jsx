@@ -34,10 +34,17 @@ const CouponPage = () => {
       if (response.status === 201) {
         setCoupons([...coupons, response.data]);
         setShowAddCouponModal(false);
+        toast.success('Coupon added successfully!');
       }
     } catch (error) {
       console.error('Error adding coupon:', error);
-      toast.error('Failed to add coupon. Please try again.');
+
+      if (error.response && error.response.data) {
+        // Display the backend error message
+        toast.error(error.response.data.message);
+      } else {
+        toast.error('Failed to add coupon. Please try again.');
+      }
     }
   };
 
@@ -50,6 +57,7 @@ const CouponPage = () => {
         );
         setCoupons(updatedCoupons);
         setShowEditCouponModal(false);
+        toast.success('Coupon edit successfully!');
       }
     } catch (error) {
       console.error('Error updating coupon:', error);
@@ -151,8 +159,18 @@ const CouponPage = () => {
 };
 
 const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toISOString().split('T')[0];
+  };
+
   const [couponData, setCouponData] = useState(
-    coupon || {
+    coupon ? {
+      ...coupon,
+      startDate: formatDate(coupon.startDate),
+      endDate: formatDate(coupon.endDate)
+    } : {
       code: '',
       description: '',
       discountType: 'percentage',
@@ -165,15 +183,110 @@ const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
       status: 'active',
     }
   );
+  console.log("Coupon:",couponData)
+  const [errors, setErrors] = useState({});
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Code validation
+    if (!couponData.code) {
+      newErrors.code = 'Coupon code is required';
+    } else if (!/^[A-Z0-9_-]{3,15}$/.test(couponData.code)) {
+      newErrors.code = 'Code must be 3-15 characters long and contain only uppercase letters, numbers, underscores, or hyphens';
+    }
+
+    // Discount type validation
+    if (!['percentage', 'fixed'].includes(couponData.discountType)) {
+      newErrors.discountType = 'Invalid discount type';
+    }
+
+    // Discount value validation
+    if (!couponData.discountValue) {
+      newErrors.discountValue = 'Discount value is required';
+    } else {
+      const discountValue = Number(couponData.discountValue);
+      if (isNaN(discountValue) || discountValue <= 0) {
+        newErrors.discountValue = 'Discount value must be a positive number';
+      }
+      if (couponData.discountType === 'percentage' && discountValue > 100) {
+        newErrors.discountValue = 'Percentage discount cannot exceed 100%';
+      }
+    }
+
+    // Minimum purchase amount validation
+    if (couponData.minPurchaseAmount) {
+      const minAmount = Number(couponData.minPurchaseAmount);
+      if (isNaN(minAmount) || minAmount < 0) {
+        newErrors.minPurchaseAmount = 'Minimum purchase amount must be a non-negative number';
+      }
+    }
+
+    // Maximum discount validation
+    if (couponData.maxDiscount) {
+      const maxDiscount = Number(couponData.maxDiscount);
+      if (isNaN(maxDiscount) || maxDiscount < 0) {
+        newErrors.maxDiscount = 'Maximum discount must be a non-negative number';
+      }
+    }
+
+    // Usage limit validation
+    if (couponData.usageLimit) {
+      const usageLimit = Number(couponData.usageLimit);
+      if (!Number.isInteger(usageLimit) || usageLimit < 1) {
+        newErrors.usageLimit = 'Usage limit must be a positive integer';
+      }
+    }
+
+    // Date validation
+    if (!couponData.startDate) {
+      newErrors.startDate = 'Start date is required';
+    }
+    
+    if (!couponData.endDate) {
+      newErrors.endDate = 'End date is required';
+    }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const startDate = new Date(couponData.startDate);
+    const endDate = new Date(couponData.endDate);
+    
+    if (startDate < today) {
+      newErrors.startDate = 'Start date cannot be in the past';
+    }
+    
+    if (endDate <= startDate) {
+      newErrors.endDate = 'End date must be after start date';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setCouponData({ ...couponData, [name]: value });
+    // Clear error when user starts typing
+    if (errors[name]) {
+      setErrors({ ...errors, [name]: '' });
+    }
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSubmit(couponData);
+    if (validateForm()) {
+      onSubmit(couponData);
+    } else {
+      toast.error('Please fix the errors in the form before submitting.');
+    }
+  };
+
+  const renderError = (fieldName) => {
+    return errors[fieldName] ? (
+      <p className="mt-1 text-sm text-red-600">{errors[fieldName]}</p>
+    ) : null;
   };
 
   return (
@@ -196,10 +309,13 @@ const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
               name="code"
               value={couponData.code}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.code ? 'border-red-500' : ''
+              }`}
               required
               readOnly={!!coupon}
             />
+            {renderError('code')}
           </div>
           <div>
             <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
@@ -211,6 +327,7 @@ const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
               rows="3"
             />
+             {renderError('description')}
           </div>
           <div>
             <label htmlFor="discountType" className="block text-sm font-medium text-gray-700">Discount Type</label>
@@ -225,30 +342,79 @@ const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
               <option value="percentage">Percentage</option>
               <option value="fixed">Fixed Amount</option>
             </select>
+            {renderError('discountType')}
           </div>
           <div>
-            <label htmlFor="discountValue" className="block text-sm font-medium text-gray-700">Discount Value</label>
+          <label htmlFor="discountValue" className="block text-sm font-medium text-gray-700">
+              Discount Value {couponData.discountType === 'percentage' ? '(%)' : '(₹)'}
+            </label>
             <input
               type="number"
               id="discountValue"
               name="discountValue"
               value={couponData.discountValue}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.discountValue ? 'border-red-500' : ''
+              }`}
               required
+              min="0"
+              max={couponData.discountType === 'percentage' ? "100" : undefined}
+              step="0.01"
             />
+            {renderError('discountValue')}
           </div>
           <div>
-            <label htmlFor="minPurchaseAmount" className="block text-sm font-medium text-gray-700">Minimum Purchase Amount</label>
+          <label htmlFor="minPurchaseAmount" className="block text-sm font-medium text-gray-700">
+              Minimum Purchase Amount (₹)
+            </label>
             <input
               type="number"
               id="minPurchaseAmount"
               name="minPurchaseAmount"
               value={couponData.minPurchaseAmount}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
-              required
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.minPurchaseAmount ? 'border-red-500' : ''
+              }`}
+              min="0"
+              step="0.01"
             />
+            {renderError('minPurchaseAmount')}
+          </div>
+          <div>
+          <label htmlFor="maxDiscount" className="block text-sm font-medium text-gray-700">
+              Maximum Discount (₹)
+            </label>
+            <input
+              type="number"
+              id="maxDiscount"
+              name="maxDiscount"
+              value={couponData.maxDiscount}
+              onChange={handleChange}
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.maxDiscount ? 'border-red-500' : ''
+              }`}
+              min="0"
+              step="0.01"
+            />
+            {renderError('maxDiscount')}
+          </div>
+          <div>
+          <label htmlFor="usageLimit" className="block text-sm font-medium text-gray-700">Usage Limit</label>
+            <input
+              type="number"
+              id="usageLimit"
+              name="usageLimit"
+              value={couponData.usageLimit}
+              onChange={handleChange}
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.usageLimit ? 'border-red-500' : ''
+              }`}
+              min="1"
+              step="1"
+            />
+            {renderError('usageLimit')}
           </div>
           <div>
             <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">Start Date</label>
@@ -258,9 +424,13 @@ const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
               name="startDate"
               value={couponData.startDate}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.startDate ? 'border-red-500' : ''
+              }`}
               required
+              min={new Date().toISOString().split('T')[0]}
             />
+            {renderError('startDate')}
           </div>
           <div>
             <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">End Date</label>
@@ -270,9 +440,13 @@ const CouponModal = ({ coupon, onClose, onSubmit, title, submitText }) => {
               name="endDate"
               value={couponData.endDate}
               onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+              className={`mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-300 focus:ring focus:ring-pink-200 focus:ring-opacity-50 ${
+                errors.endDate ? 'border-red-500' : ''
+              }`}
               required
+              min={couponData.startDate || new Date().toISOString().split('T')[0]}
             />
+            {renderError('endDate')}
           </div>
           <div className="flex justify-end space-x-4 mt-8">
             <button
