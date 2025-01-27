@@ -78,6 +78,65 @@ function ProductList() {
     endDate: "",
     status: "active",
   });
+  const [offerErrors, setOfferErrors] = useState({
+    offerName: '',
+    description: '',
+    discountPercentage: '',
+    startDate: '',
+    endDate: ''
+  });
+
+  const validateOfferForm = () => {
+    let isValid = true;
+    const newErrors = {
+      offerName: '',
+      description: '',
+      discountPercentage: '',
+      startDate: '',
+      endDate: ''
+    };
+
+    // Offer Name validation
+    if (!currentOffer.offerName.trim()) {
+      newErrors.offerName = 'Offer name is required';
+      isValid = false;
+    } else if (currentOffer.offerName.length < 3) {
+      newErrors.offerName = 'Offer name must be at least 3 characters long';
+      isValid = false;
+    }
+
+    // Description validation
+    if (!currentOffer.description.trim()) {
+      newErrors.description = 'Description is required';
+      isValid = false;
+    }
+
+    // Discount Percentage validation
+    if (!currentOffer.discountPercentage) {
+      newErrors.discountPercentage = 'Discount percentage is required';
+      isValid = false;
+    } else if (currentOffer.discountPercentage < 0 || currentOffer.discountPercentage > 100) {
+      newErrors.discountPercentage = 'Discount percentage must be between 0 and 100';
+      isValid = false;
+    }
+
+    // Date validations
+    if (!currentOffer.startDate) {
+      newErrors.startDate = 'Start date is required';
+      isValid = false;
+    }
+
+    if (!currentOffer.endDate) {
+      newErrors.endDate = 'End date is required';
+      isValid = false;
+    } else if (new Date(currentOffer.endDate) <= new Date(currentOffer.startDate)) {
+      newErrors.endDate = 'End date must be after start date';
+      isValid = false;
+    }
+
+    setOfferErrors(newErrors);
+    return isValid;
+  };
   const [editingProductId, setEditingProductId] = useState(null);
 
   const handleAddOffer = (productId) => {
@@ -94,31 +153,35 @@ function ProductList() {
   };
 
   const handleSaveOffer = async () => {
-    try {
-      const response = await axios.post(
-        `/addoffer/${editingProductId}`,
-        currentOffer
-      );
-      const updatedProduct = response.data;
+    if (!validateOfferForm()) {
+      toast.error('Please fill all required fields correctly');
+      return;
+    }
 
+    try {
+      const response = await axios.post(`/addoffer/${editingProductId}`, currentOffer);
+      
       // Update products state while preserving all existing product data
-      setProducts(
-        products.map((product) =>
-          product._id === editingProductId
-            ? {
-                ...product, // Keep existing product data
-                ...updatedProduct, // Merge with updated data
-                productImage: product.productImage, // Ensure image is preserved
-              }
-            : product
-        )
-      );
+      setProducts(products.map(product =>
+        product._id === editingProductId
+          ? { ...product, ...response.data }
+          : product
+      ));
 
       setIsOfferModalOpen(false);
-      toast.success("Offer added successfully");
+      toast.success('Offer added successfully');
     } catch (error) {
-      console.error("Error saving offer:", error);
-      toast.error("Failed to save offer");
+      if (error.response?.status === 409) {
+        // Assuming the backend sends a 409 status for duplicate offer names
+        toast.error('An offer with this name already exists');
+        setOfferErrors(prev => ({
+          ...prev,
+          offerName: 'This offer name already exists'
+        }));
+      } else {
+        console.error('Error saving offer:', error);
+        toast.error('Failed to save offer');
+      }
     }
   };
 
@@ -198,6 +261,100 @@ function ProductList() {
     navigate("/addproduct");
   };
 
+  const [formErrors, setFormErrors] = useState({
+    name: '',
+    price: '',
+    description: '',
+    productImage: '',
+  });
+
+  const [variantErrors, setVariantErrors] = useState({
+    color: '',
+    size: '',
+    quantity: '',
+    price: '',
+    varianceImage: ''
+  });
+
+  const validateProductForm = () => {
+    let isValid = true;
+    const newErrors = {
+      name: '',
+      price: '',
+      description: '',
+      productImage: ''
+    };
+
+    // Title validation (required and unique)
+    if (!formData.name.trim()) {
+      newErrors.name = 'Product name is required';
+      isValid = false;
+    }
+
+    // Price validation
+    if (!formData.price) {
+      newErrors.price = 'Price is required';
+      isValid = false;
+    } else if (isNaN(formData.price) || formData.price <= 0) {
+      newErrors.price = 'Price must be a positive number';
+      isValid = false;
+    }
+
+    // Description validation
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+      isValid = false;
+    }
+
+    // Product Image validation
+    if (uploadedImages.length === 0) {
+      newErrors.productImage = 'At least one product image is required';
+      isValid = false;
+    }
+
+    setFormErrors(newErrors);
+    return isValid;
+  };
+
+  // Validate variant form
+  const validateVariantForm = () => {
+    let isValid = true;
+    const newErrors = {
+      color: '',
+      size: '',
+      quantity: '',
+      price: '',
+      varianceImage: ''
+    };
+
+    // Quantity validation (required)
+    if (currentVariant.quantity === undefined || currentVariant.quantity === '') {
+      newErrors.quantity = 'Quantity is required';
+      isValid = false;
+    } else if (currentVariant.quantity < 0) {
+      newErrors.quantity = 'Quantity cannot be negative';
+      isValid = false;
+    }
+
+    // Price validation (required)
+    if (currentVariant.price === undefined || currentVariant.price === '') {
+      newErrors.price = 'Price is required';
+      isValid = false;
+    } else if (currentVariant.price <= 0) {
+      newErrors.price = 'Price must be greater than 0';
+      isValid = false;
+    }
+
+    // Variance Image validation (required)
+    if (currentVariantImages.length === 0) {
+      newErrors.varianceImage = 'At least one variant image is required';
+      isValid = false;
+    }
+
+    setVariantErrors(newErrors);
+    return isValid;
+  };
+
   const handleEditProduct = (product) => {
     setProductToEdit(product);
     setIsConfirmModalOpen(true);
@@ -225,7 +382,14 @@ function ProductList() {
   const handleFormSubmit = async (e) => {
     e.preventDefault();
 
+    if (!validateProductForm()) {
+      toast.error('Please fix the form errors before submitting');
+      return;
+    }
+
     try {
+      
+
       const newImageUrls = [];
       for (const img of uploadedImages) {
         if (img.file) {
@@ -270,7 +434,12 @@ function ProductList() {
       fetchProducts();
     } catch (error) {
       console.error("Error saving product:", error);
-      toast.error("Failed to save product");
+      if (error.response?.status === 400) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error("Failed to save product");
+      }
+  
     }
   };
 
@@ -413,7 +582,27 @@ function ProductList() {
   };
 
   const handleSaveVariant = async () => {
+    if (!validateVariantForm()) {
+      toast.error('Please fix the variant form errors before saving');
+      return;
+    }
+
     try {
+
+      if (editingProduct && formData.variances) {
+        const existingVariant = formData.variances.find(
+          (v, index) => 
+            index !== editingVariantIndex && 
+            v.color === currentVariant.color && 
+            v.size === currentVariant.size
+        );
+
+        if (existingVariant) {
+          toast.error('A variant with this color and size combination already exists');
+          return;
+        }
+      }
+
       const updatedVariant = { ...currentVariant };
 
       // Handle image uploads
@@ -628,8 +817,15 @@ function ProductList() {
                       value={formData.name}
                       onChange={handleChange}
                       required
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${
+                        formErrors.name 
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     />
+                    {formErrors.name && (
+        <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+      )}
                   </div>
                   <div>
                     <label
@@ -644,8 +840,15 @@ function ProductList() {
                       value={formData.description}
                       onChange={handleChange}
                       required
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md border shadow-sm focus:ring focus:ring-opacity-50 ${
+                        formErrors.description
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     ></textarea>
+                    {formErrors.description && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
+                )}
                   </div>
                   <div>
                     <label
@@ -661,8 +864,15 @@ function ProductList() {
                       value={formData.price}
                       onChange={handleChange}
                       required
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md border shadow-sm focus:ring focus:ring-opacity-50 ${
+                        formErrors.price
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     />
+                    {formErrors.price && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.price}</p>
+                )}
                   </div>
                   <div>
                     <label
@@ -983,8 +1193,15 @@ function ProductList() {
                           color: e.target.value,
                         })
                       }
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md border shadow-sm focus:ring focus:ring-opacity-50 ${
+                        variantErrors.color
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     />
+                     {variantErrors.color && (
+                  <p className="mt-1 text-sm text-red-600">{variantErrors.color}</p>
+                )}
                   </div>
                   <div>
                     <label
@@ -1003,8 +1220,15 @@ function ProductList() {
                           size: e.target.value,
                         })
                       }
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md border shadow-sm focus:ring focus:ring-opacity-50 ${
+                        variantErrors.size
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     />
+                                    {variantErrors.size && (
+                  <p className="mt-1 text-sm text-red-600">{variantErrors.size}</p>
+                )}
                   </div>
                   <div>
                     <label
@@ -1023,8 +1247,15 @@ function ProductList() {
                           quantity: parseInt(e.target.value),
                         })
                       }
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md border shadow-sm focus:ring focus:ring-opacity-50 ${
+                        variantErrors.quantity
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     />
+                    {variantErrors.quantity && (
+                  <p className="mt-1 text-sm text-red-600">{variantErrors.quantity}</p>
+                )}
                   </div>
                   <div>
                     <label
@@ -1043,8 +1274,15 @@ function ProductList() {
                           price: parseFloat(e.target.value),
                         })
                       }
-                      className="mt-1 block w-full rounded-md border-pink-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-200 focus:ring-opacity-50"
+                      className={`mt-1 block w-full rounded-md border shadow-sm focus:ring focus:ring-opacity-50 ${
+                        variantErrors.price
+                          ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                          : 'border-pink-300 focus:border-pink-500 focus:ring-pink-500'
+                      }`}
                     />
+                    {variantErrors.price && (
+                  <p className="mt-1 text-sm text-red-600">{variantErrors.price}</p>
+                )}
                   </div>
                   <div>
                     <label
@@ -1058,13 +1296,20 @@ function ProductList() {
                       id="variantImage"
                       multiple
                       onChange={handleVariantImageUpload}
-                      className="mt-1 block w-full text-sm text-pink-500
-                      file:mr-4 file:py-2 file:px-4
-                      file:rounded-full file:border-0
-                      file:text-sm file:font-semibold
-                      file:bg-pink-50 file:text-pink-700
-                      hover:file:bg-pink-100"
+                      className={`mt-1 block w-full text-sm text-pink-500
+                        file:mr-4 file:py-2 file:px-4
+                        file:rounded-full file:border-0
+                        file:text-sm file:font-semibold
+                        file:bg-pink-50 file:text-pink-700
+                        hover:file:bg-pink-100 ${
+                          variantErrors.varianceImage
+                            ? 'border-red-500 focus:border-red-500'
+                            : ''
+                        }`}
                     />
+                    {variantErrors.varianceImage && (
+                  <p className="mt-1 text-sm text-red-600">{variantErrors.varianceImage}</p>
+                )}
                   </div>
                   {currentVariantImages.length > 0 && (
                     <div className="grid grid-cols-3 gap-4 mt-4">
@@ -1128,104 +1373,133 @@ function ProductList() {
                   className="space-y-4"
                 >
                   <div>
-                    <label
-                      htmlFor="offerName"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Offer Name
-                    </label>
-                    <input
-                      type="text"
-                      id="offerName"
-                      value={currentOffer.offerName}
-                      onChange={(e) =>
-                        setCurrentOffer({
-                          ...currentOffer,
-                          offerName: e.target.value,
-                        })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-500 focus:ring-opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="description"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Description
-                    </label>
-                    <textarea
-                      id="description"
-                      value={currentOffer.description}
-                      onChange={(e) =>
-                        setCurrentOffer({
-                          ...currentOffer,
-                          description: e.target.value,
-                        })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-500 focus:ring-opacity-50"
-                    ></textarea>
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="discountPercentage"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Discount Percentage
-                    </label>
-                    <input
-                      type="number"
-                      id="discountPercentage"
-                      value={currentOffer.discountPercentage}
-                      onChange={(e) =>
-                        setCurrentOffer({
-                          ...currentOffer,
-                          discountPercentage: parseFloat(e.target.value),
-                        })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-500 focus:ring-opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="startDate"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Start Date
-                    </label>
-                    <input
-                      type="date"
-                      id="startDate"
-                      value={currentOffer.startDate}
-                      onChange={(e) =>
-                        setCurrentOffer({
-                          ...currentOffer,
-                          startDate: e.target.value,
-                        })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-500 focus:ring-opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="endDate"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      End Date
-                    </label>
-                    <input
-                      type="date"
-                      id="endDate"
-                      value={currentOffer.endDate}
-                      onChange={(e) =>
-                        setCurrentOffer({
-                          ...currentOffer,
-                          endDate: e.target.value,
-                        })
-                      }
-                      className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-pink-500 focus:ring focus:ring-pink-500 focus:ring-opacity-50"
-                    />
-                  </div>
+            <label htmlFor="offerName" className="block text-sm font-medium text-gray-700">
+              Offer Name
+            </label>
+            <input
+              type="text"
+              id="offerName"
+              value={currentOffer.offerName}
+              onChange={(e) => {
+                setCurrentOffer({
+                  ...currentOffer,
+                  offerName: e.target.value,
+                });
+                setOfferErrors(prev => ({ ...prev, offerName: '' }));
+              }}
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${
+                offerErrors.offerName 
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-pink-500 focus:ring-pink-500'
+              }`}
+            />
+            {offerErrors.offerName && (
+              <p className="mt-1 text-sm text-red-600">{offerErrors.offerName}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+              Description
+            </label>
+            <textarea
+              id="description"
+              value={currentOffer.description}
+              onChange={(e) => {
+                setCurrentOffer({
+                  ...currentOffer,
+                  description: e.target.value,
+                });
+                setOfferErrors(prev => ({ ...prev, description: '' }));
+              }}
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${
+                offerErrors.description 
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-pink-500 focus:ring-pink-500'
+              }`}
+            />
+            {offerErrors.description && (
+              <p className="mt-1 text-sm text-red-600">{offerErrors.description}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="discountPercentage" className="block text-sm font-medium text-gray-700">
+              Discount Percentage
+            </label>
+            <input
+              type="number"
+              id="discountPercentage"
+              value={currentOffer.discountPercentage}
+              onChange={(e) => {
+                setCurrentOffer({
+                  ...currentOffer,
+                  discountPercentage: parseFloat(e.target.value),
+                });
+                setOfferErrors(prev => ({ ...prev, discountPercentage: '' }));
+              }}
+              min="0"
+              max="100"
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${
+                offerErrors.discountPercentage 
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-pink-500 focus:ring-pink-500'
+              }`}
+            />
+            {offerErrors.discountPercentage && (
+              <p className="mt-1 text-sm text-red-600">{offerErrors.discountPercentage}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="startDate" className="block text-sm font-medium text-gray-700">
+              Start Date
+            </label>
+            <input
+              type="date"
+              id="startDate"
+              value={currentOffer.startDate}
+              min={new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                setCurrentOffer({
+                  ...currentOffer,
+                  startDate: e.target.value,
+                });
+                setOfferErrors(prev => ({ ...prev, startDate: '' }));
+              }}
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${
+                offerErrors.startDate 
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-pink-500 focus:ring-pink-500'
+              }`}
+            />
+            {offerErrors.startDate && (
+              <p className="mt-1 text-sm text-red-600">{offerErrors.startDate}</p>
+            )}
+          </div>
+          <div>
+            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">
+              End Date
+            </label>
+            <input
+              type="date"
+              id="endDate"
+              value={currentOffer.endDate}
+              min={currentOffer.startDate || new Date().toISOString().split('T')[0]}
+              onChange={(e) => {
+                setCurrentOffer({
+                  ...currentOffer,
+                  endDate: e.target.value,
+                });
+                setOfferErrors(prev => ({ ...prev, endDate: '' }));
+              }}
+              className={`mt-1 block w-full rounded-md shadow-sm focus:ring focus:ring-opacity-50 ${
+                offerErrors.endDate 
+                  ? 'border-red-500 focus:border-red-500 focus:ring-red-500' 
+                  : 'border-gray-300 focus:border-pink-500 focus:ring-pink-500'
+              }`}
+            />
+            {offerErrors.endDate && (
+              <p className="mt-1 text-sm text-red-600">{offerErrors.endDate}</p>
+            )}
+          </div>
                   <div>
                     <label
                       htmlFor="status"

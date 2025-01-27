@@ -9,6 +9,13 @@ const productOffer = async (req, res) => {
     const { offerName, description, discountPercentage, startDate, endDate, category } = req.body;
 
     try {
+
+      const existingOffer = await Offer.findOne({ offerName: offerName });
+        if (existingOffer) {
+            return res.status(409).json({ 
+                message: 'An offer with this name already exists'
+            });
+        }
         // Validate that the product exists
         const product = await Product.findById(productId);
         if (!product) {

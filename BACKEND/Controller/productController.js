@@ -109,6 +109,21 @@ const editProduct = async (req, res) => {
       return res.status(400).json({ message: "Invalid price input" });
     }
 
+    const existingProductWithSameTitle = await Products.findOne({
+      title: name,
+      _id: { $ne: id }, // Exclude the current product by ID
+    });
+
+    if (existingProductWithSameTitle) {
+      return res
+        .status(400)
+        .json({ message: `A product with the title "${name}" already exists` });
+    }
+
+    // Check for duplicate variants in the database
+   
+
+
     const checkCategory = await Category.findOne({ categoryName: category });
     const categoryId = checkCategory ? checkCategory._id : req.body.categoryId;
 
