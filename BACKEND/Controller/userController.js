@@ -713,7 +713,23 @@ const resetPassword = async (req, res) => {
     }
 };
 
-
+const checkStatus = async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      // Find the user by ID
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ status: 'inactive', message: 'User not found' });
+      }
+      console.log("Usert:",user)
+      // Respond with the user's status
+      res.status(200).json({ status: user.status });
+    } catch (error) {
+      console.error('Error fetching user status:', error);
+      res.status(500).json({ status: 'inactive', message: 'Internal server error' });
+    }
+  }
 
 
 
@@ -736,6 +752,7 @@ module.exports={
     changePassword,
     sendResetPasswordMail,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    checkStatus
 
 }
