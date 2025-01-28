@@ -130,7 +130,7 @@ const sendVerificationMail = async (email, otp) => {
 };
 
 
-const signUp = async (req, res) => {
+const  signUp = async (req, res) => {
     try {
         const { firstName, lastName, password, email, phoneNumber } = req.body;
 
@@ -589,12 +589,63 @@ const sendResetPasswordMail = async (email, resetToken) => {
         await transporter.sendMail({
             from: process.env.NODEMAILER_EMAIL,
             to: email,
-            subject: 'Password Reset Request',
+            subject: 'Reset Your Password - Lush Aura',
             html: `
-                <p>You requested a password reset.</p>
-                <p>Click the link below to reset your password:</p>
-                <a href="${resetPasswordUrl}">${resetPasswordUrl}</a>
-                <p>This link is valid for 1 hour.</p>
+                <!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Password Reset</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #FFF0F5;">
+    <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background-color: white; border-radius: 10px; padding: 30px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="color: #FF69B4; margin: 0; font-size: 24px;">Password Reset Request</h1>
+            </div>
+            
+            <div style="background-color: #FFF0F5; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 15px 0;">
+                    Hello there,
+                </p>
+                <p style="color: #333333; font-size: 16px; line-height: 1.5; margin: 0 0 15px 0;">
+                    We received a request to reset your password. Don't worry – we'll help you get back into your account!
+                </p>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${resetPasswordUrl}" 
+                   style="display: inline-block; 
+                          background-color: #FF69B4; 
+                          color: white; 
+                          text-decoration: none; 
+                          padding: 15px 30px; 
+                          border-radius: 25px; 
+                          font-size: 16px; 
+                          font-weight: bold;
+                          box-shadow: 0 2px 4px rgba(255,105,180,0.3);">
+                    Reset Password
+                </a>
+            </div>
+
+            <p style="color: #666666; font-size: 14px; line-height: 1.5; margin: 0 0 15px 0;">
+                If you didn't request this password reset, please ignore this email or contact our support team if you have concerns.
+            </p>
+
+            <div style="border-top: 1px solid #FFB6C1; margin-top: 30px; padding-top: 20px;">
+                <p style="color: #999999; font-size: 12px; margin: 0; text-align: center;">
+                    This password reset link will expire in 1 hour for your security.
+                </p>
+                <p style="color: #999999; font-size: 12px; margin: 10px 0 0 0; text-align: center;">
+                    If the button doesn't work, copy and paste this link into your browser:<br>
+                    <span style="color: #FF69B4;">${resetPasswordUrl}</span>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
             `,
         });
 
