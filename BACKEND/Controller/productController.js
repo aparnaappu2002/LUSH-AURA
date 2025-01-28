@@ -1,6 +1,7 @@
 const Products = require('../Models/productSchema')
 const Category = require("../Models/categorySchema")
 const Offer = require("../Models/offerSchema")
+const Cart = require("../Models/cartSchema"); 
 const fs = require('fs');
 const path = require('path');
 
@@ -172,6 +173,31 @@ const editProduct = async (req, res) => {
     );
 
     console.log("Updated Product title:", updatedProduct.title);
+
+    const carts = await Cart.find({ "items.productId": id }); // Find carts with the product
+    if (carts.length > 0) {
+      for (const cart of carts) {
+        let updated = false;
+        cart.items.forEach(item => {
+          if (String(item.productId) === id) {
+            // Find the matching variance
+            const updatedVariance = variances.find(v =>
+              v.size === item.variance.size && v.color === item.variance.color
+            );
+            if (updatedVariance) {
+              item.availableQuantity = updatedVariance.quantity; // Update available quantity
+              updated = true;
+            }
+          }
+        });
+
+        if (updated) {
+          cart.updatedAt = new Date(); // Update the cart's timestamp
+          await cart.save(); // Save the updated cart
+          console.log(`Cart updated for user ID: ${cart.userId}`);
+        }
+      }
+    }
 
     return res.status(200).json({
       message: "Product edited successfully",

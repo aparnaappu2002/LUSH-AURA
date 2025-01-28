@@ -12,6 +12,7 @@ const CartPage = () => {
   const [error, setError] = useState(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [itemToRemove, setItemToRemove] = useState(null);
+  const [validationError, setValidationError] = useState(null);
   const navigate= useNavigate()
   const user = useSelector((state) => state.user.user);
 
@@ -38,7 +39,7 @@ const CartPage = () => {
       const response = await axios.get(`/cart/${userId}`); // Fetch cart items from the server
       const cartData = response.data.cart;
   
-      console.log("CartData:", cartData);
+     // console.log("CartData:", cartData);
   
       if (cartData && Array.isArray(cartData.items)) {
         setCartItems(
@@ -71,6 +72,38 @@ const CartPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const validateCartItems = () => {
+    // Reset any previous validation errors
+    setValidationError(null);
+    
+    // Check each item in the cart
+    for (const item of cartItems) {
+      // Check if item is available (quantity > 0)
+      if (item.availableQuantity <= 0) {
+        setValidationError(`${item.name} is currently out of stock`);
+        return false;
+      }
+      
+      // Check if requested quantity exceeds available quantity
+      if (item.quantity > item.availableQuantity) {
+        setValidationError(
+          `Only ${item.availableQuantity} units of ${item.name} are available`
+        );
+        return false;
+      }
+      
+      // Check if quantity exceeds maximum limit of 5
+      if (item.quantity > 5) {
+        setValidationError(
+          `Maximum quantity limit is 5 units per item. Please reduce the quantity of ${item.name}`
+        );
+        return false;
+      }
+    }
+    
+    return true;
   };
   
   
@@ -183,7 +216,10 @@ const CartPage = () => {
 
   const proceedToPay = () => {
     // Validate quantities before proceeding
-    
+    if (!validateCartItems()) {
+      // If validation fails, the error will be set in state
+      return;
+    }
   
     console.log("Proceeding to payment");
     navigate("/checkout");
@@ -249,6 +285,15 @@ const CartPage = () => {
           <ShoppingBasket className="w-8 h-8 text-pink-500" />
           <h1 className="text-3xl font-bold text-gray-800">Your Cart</h1>
         </div>
+
+        {validationError && (
+          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              <p className="text-red-600">{validationError}</p>
+            </div>
+          </div>
+        )}
         
         {cartItems.length === 0 ? (
           <div className="bg-white rounded-xl shadow-md p-6 text-center">
