@@ -1,6 +1,6 @@
 const express = require("express")
 const userRoute= express.Router()
-const {signUp,login, otpVerification, resendOtp, refreshToken, googleLogin, changeInformation,getUser, changePassword, forgotPassword, resetPassword}=require('../Controller/userController')
+const {signUp,login, otpVerification, resendOtp, refreshToken, googleLogin, changeInformation,getUser, changePassword, forgotPassword, resetPassword, checkStatus}=require('../Controller/userController')
 const {showProductListed, showProductone, relatedProducts,filterProduct, searchProducts} = require("../Controller/productController")
 const {addAddress, showAddress, editAddress, removeAddress} = require("../Controller/addressController")
 const {authToken} = require('../auth/userAuth')
@@ -71,6 +71,7 @@ userRoute.get('/category-offers/:categoryId',authToken,categoryOfferbyId)
 userRoute.get('/offers/products',authToken,getProductOffers)
 
 userRoute.get('/search',authToken,searchProducts)
+userRoute.get('/checkstatus/:id',checkStatus)
 
 
 
