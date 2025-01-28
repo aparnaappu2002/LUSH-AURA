@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../axios/userAxios';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Wallet, PlusCircle, MinusCircle, ArrowUpCircle, ArrowDownCircle, Filter, RefreshCw } from 'lucide-react';
+import { Wallet, PlusCircle, MinusCircle, ArrowUpCircle, ArrowDownCircle, Filter, RefreshCw, ChevronLeft, ChevronRight } from 'lucide-react';
 import Navbar from '../shared/Navbar';
 import { useSelector } from 'react-redux';
 
@@ -12,8 +12,11 @@ const EnhancedWalletPage = () => {
   const [filter, setFilter] = useState('All');
   const [amount, setAmount] = useState('');
   const [showAddFunds, setShowAddFunds] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+  
   const user = useSelector(state => state.user.user);
-  const userId = user.id || user._id
+  const userId = user.id || user._id;
 
   useEffect(() => {
     fetchWalletData();
@@ -46,6 +49,24 @@ const EnhancedWalletPage = () => {
     if (filter === 'All') return true;
     return transaction.transactionType === filter;
   }) ?? [];
+
+  // Sort transactions by date in descending order (latest first)
+  const sortedTransactions = [...filteredTransactions].sort((a, b) => 
+    new Date(b.date) - new Date(a.date)
+  );
+
+  // Pagination logic
+  const totalPages = Math.ceil(sortedTransactions.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedTransactions = sortedTransactions.slice(startIndex, startIndex + itemsPerPage);
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(newPage);
+    window.scrollTo({
+      top: document.querySelector('.transaction-list')?.offsetTop,
+      behavior: 'smooth'
+    });
+  };
 
   if (loading) return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-pink-100 to-purple-100">
@@ -93,46 +114,7 @@ const EnhancedWalletPage = () => {
           <p className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-purple-500">
             ₹{(walletData?.balance ?? 0).toFixed(2)}
           </p>
-          {/* <motion.button
-            className="mt-4 bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-2 rounded-full hover:from-pink-600 hover:to-purple-600 transition duration-300 flex items-center"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowAddFunds(!showAddFunds)}
-          >
-            <PlusCircle className="mr-2" size={20} />
-            Add Funds
-          </motion.button> */}
         </motion.div>
-
-        {/* <AnimatePresence>
-          {showAddFunds && (
-            <motion.div
-              className="bg-white rounded-2xl shadow-xl p-8 mb-8"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <h2 className="text-2xl font-semibold text-pink-600 mb-4">Add Funds</h2>
-              <div className="flex items-center">
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="Enter amount"
-                  className="flex-grow p-2 border-2 border-pink-300 rounded-l-full focus:outline-none focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                />
-                <button
-                  onClick={addFunds}
-                  className="bg-gradient-to-r from-pink-500 to-purple-500 text-white px-6 py-2 rounded-r-full hover:from-pink-600 hover:to-purple-600 transition duration-300 flex items-center"
-                >
-                  <ArrowUpCircle className="mr-2" size={20} />
-                  Add
-                </button>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence> */}
 
         <motion.div
           className="bg-white rounded-2xl shadow-xl p-8"
@@ -153,32 +135,71 @@ const EnhancedWalletPage = () => {
               <option value="Debit">Debits Only</option>
             </select>
           </div>
-          <ul className="space-y-4">
-            {filteredTransactions.map((transaction, index) => (
-              <motion.li
-                key={index}
-                className="border-b-2 border-pink-100 pb-4"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+          <div className="transaction-list">
+            <ul className="space-y-4">
+              {paginatedTransactions.map((transaction, index) => (
+                <motion.li
+                  key={index}
+                  className="border-b-2 border-pink-100 pb-4"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="font-semibold text-pink-700">{transaction.description}</p>
+                      <p className="text-sm text-pink-500">{new Date(transaction.date).toLocaleString()}</p>
+                    </div>
+                    <div className={`flex items-center ${transaction.transactionType === 'Credit' ? 'text-green-600' : 'text-red-600'}`}>
+                      {transaction.transactionType === 'Credit' ? (
+                        <ArrowUpCircle className="mr-2" size={24} />
+                      ) : (
+                        <ArrowDownCircle className="mr-2" size={24} />
+                      )}
+                      <span className="font-bold text-lg">₹{transaction.amount.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex justify-center items-center space-x-4">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-full ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-pink-600 hover:bg-pink-100'}`}
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="font-semibold text-pink-700">{transaction.description}</p>
-                    <p className="text-sm text-pink-500">{new Date(transaction.date).toLocaleString()}</p>
-                  </div>
-                  <div className={`flex items-center ${transaction.transactionType === 'Credit' ? 'text-green-600' : 'text-red-600'}`}>
-                    {transaction.transactionType === 'Credit' ? (
-                      <ArrowUpCircle className="mr-2" size={24} />
-                    ) : (
-                      <ArrowDownCircle className="mr-2" size={24} />
-                    )}
-                    <span className="font-bold text-lg">₹{transaction.amount.toFixed(2)}</span>
-                  </div>
-                </div>
-              </motion.li>
-            ))}
-          </ul>
+                <ChevronLeft size={24} />
+              </button>
+              
+              <div className="flex items-center space-x-2">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-8 h-8 rounded-full ${
+                      currentPage === page
+                        ? 'bg-gradient-to-r from-pink-500 to-purple-500 text-white'
+                        : 'text-pink-600 hover:bg-pink-100'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className={`p-2 rounded-full ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-pink-600 hover:bg-pink-100'}`}
+              >
+                <ChevronRight size={24} />
+              </button>
+            </div>
+          )}
         </motion.div>
       </div>
     </div>
@@ -187,4 +208,3 @@ const EnhancedWalletPage = () => {
 };
 
 export default EnhancedWalletPage;
-
