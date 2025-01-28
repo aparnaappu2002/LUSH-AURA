@@ -225,17 +225,21 @@ const OrderListPage = () => {
           return;
         }
 
-        console.log("User ID:", userId);
+       // console.log("User ID:", userId);
 
         const response = await axios.get(`/orders/${userId}`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
-        console.log("Orders:", response);
+        //console.log("Orders:", response);
 
-        console.log("Response:", response);
-        setOrders(response.data);
+        //console.log("Response:", response);
+        const sortedOrders = response.data.sort((a, b) => {
+          return new Date(b.orderDate) - new Date(a.orderDate);
+        });
+
+        setOrders(sortedOrders);
       } catch (err) {
         console.error("Error fetching orders:", err);
         setError("Failed to fetch orders");
@@ -260,7 +264,7 @@ const OrderListPage = () => {
   const cancelOrder = async () => {
     if (!orderToCancel) return;
 
-    console.log("orderTocancel", orderToCancel);
+    //console.log("orderTocancel", orderToCancel);
 
     try {
       const token = localStorage.getItem("token");
@@ -268,7 +272,7 @@ const OrderListPage = () => {
       const order = orders.find(o => o._id === orderToCancel.orderId);
       const item = order?.items?.find(i => i._id === orderToCancel.productId);
 
-      console.log("Item:",item)
+      //console.log("Item:",item)
 
       // Send cancellation request
       await axios.post(
@@ -327,7 +331,7 @@ const OrderListPage = () => {
         variance, // Use consistent keys with the backend
       };
 
-      console.log("Body:", requestBody);
+     // console.log("Body:", requestBody);
 
       // Make the return request
       const response = await axios.post(

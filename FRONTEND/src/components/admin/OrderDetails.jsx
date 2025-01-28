@@ -52,7 +52,10 @@ const OrderManagement = () => {
     const fetchOrders = async () => {
       try {
         const response = await axios.get('/orders')
-        setOrders(response.data)
+        const sortedOrders = response.data.sort((a, b) => 
+          new Date(b.orderDate) - new Date(a.orderDate)
+        )
+        setOrders(sortedOrders)
         setIsLoading(false)
       } catch (error) {
         console.error("Error fetching orders:", error)
@@ -370,6 +373,7 @@ const OrderManagement = () => {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Image</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variance</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
@@ -381,6 +385,24 @@ const OrderManagement = () => {
                     {selectedOrder.items.map((item, index) => (
                       <tr key={index} className="hover:bg-gray-50 transition-colors duration-200">
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{item.productName}</td>
+                        <td className="px-6 py-4">
+                        {item.variance.varianceImage && item.variance.varianceImage.length > 0 && (
+                          <div className="flex space-x-2 overflow-x-auto">
+                            {item.variance.varianceImage.map((image, imgIndex) => (
+                              <div key={imgIndex} className="relative group">
+                                <img
+                                  src={image}
+                                  alt={`Product variance ${imgIndex + 1}`}
+                                  className="h-20 w-20 object-cover rounded-md cursor-pointer transition-transform "
+                                  onClick={() => {
+                                    // You can add a modal or lightbox here to show the full-size image
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {item.variance.size && <p>Size: {item.variance.size}</p>}
                           {item.variance.color && <p>Color: {item.variance.color}</p>}
