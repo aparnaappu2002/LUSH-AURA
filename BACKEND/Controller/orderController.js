@@ -449,12 +449,63 @@ const acceptReturnRequest = async (req, res) => {
 
     // Calculate the total refund amount
     let refundAmount = 0;
-    order.items.forEach(item => {
+    for (const item of order.items) {
       if (item.productStatus === "Return Requested") {
         refundAmount += item.subtotal;
         item.productStatus = "Returned";
+
+        // Find and update the product variance quantity
+        try {
+          // Find the product
+          const product = await Product.findById(item.productId);
+          if (!product) {
+            console.error(`Product not found for ID: ${item.productId}`);
+            continue;
+          }
+
+          // Find the matching variance in the product
+          const varianceIndex = product.variances.findIndex(v => 
+            v.size === item.variance.size && 
+            v.color === item.variance.color
+          );
+
+          if (varianceIndex === -1) {
+            console.error(`Matching variance not found for product ${item.productId}`);
+            continue;
+          }
+
+          // Update the variance quantity
+          product.variances[varianceIndex].quantity += item.quantity;
+          
+          // Update the overall available quantity
+          product.availableQuantity += item.quantity;
+
+          // Debug logs
+          console.log('Before save:', {
+            productId: product._id,
+            varianceIndex,
+            newQuantity: product.variances[varianceIndex].quantity,
+            newTotalQuantity: product.availableQuantity
+          });
+
+          // Save the product changes
+          await product.save();
+
+          // Verify the update
+          const updatedProduct = await Product.findById(product._id);
+          console.log('After save:', {
+            productId: updatedProduct._id,
+            varianceQuantity: updatedProduct.variances[varianceIndex].quantity,
+            totalQuantity: updatedProduct.availableQuantity
+          });
+
+        } catch (error) {
+          console.error('Error updating product variance:', error);
+          // Continue processing other items even if one fails
+          continue;
+        }
       }
-    });
+    }
 
     // Update the order's total price
     order.totalPrice -= refundAmount;
