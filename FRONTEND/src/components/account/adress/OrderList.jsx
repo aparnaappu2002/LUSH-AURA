@@ -664,27 +664,31 @@ const OrderListPage = () => {
           </ul>
         </div>
         <div className="mt-4 flex justify-center">
-          <nav
-            className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px"
-            aria-label="Pagination"
-          >
-            {Array.from({
-              length: Math.ceil(orders.length / ordersPerPage),
-            }).map((_, index) => (
-              <button
-                key={index}
-                onClick={() => paginate(index + 1)}
-                className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                  currentPage === index + 1
-                    ? "z-10 bg-indigo-50 border-indigo-500 text-indigo-600"
-                    : "bg-white border-gray-300 text-gray-500 hover:bg-gray-50"
-                }`}
-              >
-                {index + 1}
-              </button>
-            ))}
-          </nav>
-        </div>
+  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+    <button
+      onClick={() => paginate(currentPage - 1)}
+      disabled={currentPage === 1}
+      className={`relative inline-flex items-center px-4 py-2 rounded-l-md border text-sm font-medium 
+        ${currentPage === 1 
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+        }`}
+    >
+      Previous
+    </button>
+    <button
+      onClick={() => paginate(currentPage + 1)}
+      disabled={currentPage === Math.ceil(orders.length / ordersPerPage)}
+      className={`relative inline-flex items-center px-4 py-2 rounded-r-md border text-sm font-medium 
+        ${currentPage === Math.ceil(orders.length / ordersPerPage)
+          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+          : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+        }`}
+    >
+      Next
+    </button>
+  </nav>
+</div>
       </div>
 
       <Transition appear show={isModalOpen} as={Fragment}>
