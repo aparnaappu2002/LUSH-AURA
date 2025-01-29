@@ -1,7 +1,8 @@
 const Products = require('../Models/productSchema')
 const Category = require("../Models/categorySchema")
 const Offer = require("../Models/offerSchema")
-const Cart = require("../Models/cartSchema"); 
+const Cart = require("../Models/cartSchema");
+const Wishlist = require("../Models/wishlistSchema")  
 const fs = require('fs');
 const path = require('path');
 
@@ -198,6 +199,31 @@ const editProduct = async (req, res) => {
         }
       }
     }
+
+    const wishlists = await Wishlist.find({ "items.productId": id });
+    if (wishlists.length > 0) {
+      for (const wishlist of wishlists) {
+        let updated = false;
+        wishlist.items.forEach(item => {
+          if (String(item.productId) === id) {
+            const updatedVariance = variances.find(v =>
+              v.size === item.variance.size && v.color === item.variance.color
+            );
+            if (updatedVariance) {
+              item.variance.availableQuantity = updatedVariance.quantity;
+              updated = true;
+            }
+          }
+        });
+
+        if (updated) {
+          wishlist.updatedAt = new Date();
+          await wishlist.save();
+          console.log(`Wishlist updated for user ID: ${wishlist.userId}`);
+        }
+      }
+    }
+
 
     return res.status(200).json({
       message: "Product edited successfully",

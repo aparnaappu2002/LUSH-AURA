@@ -111,7 +111,7 @@ const wishlistDelete = async (req, res) => {
 
 const wishAdd = async (req, res) => {
   try {
-    const { userId, productId, productName, variance, quantity } = req.body;
+    const { userId, productId, productName, variance, quantity,offerPrice } = req.body;
 
     console.log("Request Body:", req.body);
 
@@ -178,7 +178,7 @@ const wishAdd = async (req, res) => {
     const selectedImage =
       varianceExists.varianceImage?.[0] || product.productImage?.[0] || "default-image.jpg";
 
-    const itemPrice = varianceExists.price || product.price;
+    const itemPrice = offerPrice||varianceExists.price || product.price;
     const itemSubtotal = itemPrice * quantity;
 
     // Add the new item to the cart

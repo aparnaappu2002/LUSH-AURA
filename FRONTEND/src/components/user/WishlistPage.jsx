@@ -22,7 +22,7 @@ const WishlistPage = () => {
     try {
         setLoading(true);
         const response = await axios.get(`wishlist/${userId}`);
-        console.log("Response:", response);
+       // console.log("Response:", response);
         
         // Check if the response data is an empty array
         if (response.data && Array.isArray(response.data.data) && response.data.data.length > 0) {
@@ -50,6 +50,18 @@ const WishlistPage = () => {
   };
 
   const addToCart = async (item) => {
+
+    if (!item.variance.availableQuantity || item.variance.availableQuantity < 1) {
+      toast.error("This product is currently out of stock");
+      return;
+    }
+
+    // Check if requested quantity exceeds available stock
+    const requestedQuantity = item.quantity || 1;
+    if (requestedQuantity > item.availableQuantity) {
+      toast.error(`Only ${item.availableQuantity} units available in stock`);
+      return;
+    }
     try {
       const response = await axios.post(`/wishadd`, {
         userId: userId, // User ID
@@ -134,7 +146,7 @@ const WishlistPage = () => {
                     <div className="p-3">
                       <h2 className="text-sm font-semibold text-pink-800 mb-1 truncate">{item.productName}</h2>
                       <p className="text-pink-600 font-bold mb-2 text-sm">
-                        ₹{item.productId && item.productId.price ? item.productId.price.toFixed(2) : 'N/A'}
+                        ₹{item.price && item.price ? item.price.toFixed(2) : 'N/A'}
                       </p>
                       <div className="flex space-x-1">
                         <button
