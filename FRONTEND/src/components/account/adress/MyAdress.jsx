@@ -11,15 +11,61 @@ export default function MyAddressPage() {
   const [newAddressModalOpen, setNewAddressModalOpen] = useState(false);
   const [currentAddress, setCurrentAddress] = useState(null);
   const [defaultAddress, setDefaultAddress] = useState({});
+  const [errors, setErrors] = useState({});
 
   const user = useSelector(state => state.user.user);
   const userId = user.id || user._id
+
+  const validateForm = (formData) => {
+    const newErrors = {};
+    
+    // Address validation
+    if (!formData.addressLine?.trim()) {
+      newErrors.addressLine = 'Address is required';
+    }
+
+    // Street validation
+    if (!formData.street?.trim()) {
+      newErrors.street = 'Street is required';
+    }
+
+    // City validation
+    if (!formData.city?.trim()) {
+      newErrors.city = 'City is required';
+    }
+
+    // State validation
+    if (!formData.state?.trim()) {
+      newErrors.state = 'State is required';
+    }
+
+    // Country validation
+    if (!formData.country?.trim()) {
+      newErrors.country = 'Country is required';
+    }
+
+    // Pincode validation
+    if (!formData.pincode?.trim()) {
+      newErrors.pincode = 'Pincode is required';
+    } else if (!/^\d{6}$/.test(formData.pincode.trim())) {
+      newErrors.pincode = 'Pincode must be 6 digits';
+    }
+
+    // Phone validation
+    if (!formData.phone?.trim()) {
+      newErrors.phone = 'Phone number is required';
+    } else if (!/^\d{10}$/.test(formData.phone.trim())) {
+      newErrors.phone = 'Phone number must be 10 digits';
+    }
+
+    return newErrors;
+  };
 
   const fetchAddresses = useCallback(async () => {
     if (userId) {
       try {
         const { data } = await axios.get(`/showAddress/${userId}`);
-        console.log('Address List:', data);
+       // console.log('Address List:', data);
         setAddresses(data.addresses || []);
         const defaultAddr = data.addresses?.find(addr => addr.defaultAddress === true);
         setDefaultAddress(defaultAddr || {});
@@ -57,6 +103,12 @@ export default function MyAddressPage() {
   };
 
   const saveAddress = async (editedAddress) => {
+    const validationErrors = validateForm(editedAddress);
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
     const updatedAddress = {
       _id: currentAddress._id,
       ...editedAddress
@@ -66,7 +118,7 @@ export default function MyAddressPage() {
     
     try {
       const response = await axios.put('/editAddress', updatedAddress);
-      console.log('Address updated successfully', response.data);
+     // console.log('Address updated successfully', response.data);
       
       setAddresses(prevAddresses => 
         prevAddresses.map(address => 
@@ -76,6 +128,7 @@ export default function MyAddressPage() {
   
       setEditModalOpen(false);
       // Fetch addresses again to ensure we have the latest data
+      setErrors({});
       fetchAddresses();
     } catch (error) {
       console.error('Error updating address:', error);
@@ -83,16 +136,48 @@ export default function MyAddressPage() {
   };
 
   const addNewAddress = async (newAddress) => {
+    const validationErrors = validateForm(newAddress);
+    
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
     try {
       const response = await axios.post('/address', { ...newAddress, userId });
-      console.log('Address added:', response.data);
+      //console.log('Address added:', response.data);
       setAddresses(prevAddresses => [...prevAddresses, response.data]);
       setNewAddressModalOpen(false);
       // Fetch addresses again to ensure we have the latest data
+      setErrors({});
       fetchAddresses();
     } catch (error) {
       console.error('Error adding address:', error);
     }
+  };
+
+  const renderFormField = (field, value = '', isEdit = false) => {
+    const fieldId = isEdit ? `edit-${field}` : field;
+    const fieldName = field === 'addressLine' ? 'address' : field;
+    
+    return (
+      <div key={field} className="mb-4">
+        <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700 mb-1 capitalize">
+          {fieldName}
+        </label>
+        <input
+          type="text"
+          id={fieldId}
+          name={fieldName}
+          defaultValue={value}
+          className={`mt-1 block w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+            errors[field] ? 'border-red-500' : 'border-gray-300'
+          }`}
+        />
+        {errors[field] && (
+          <p className="mt-1 text-sm text-red-500">{errors[field]}</p>
+        )}
+      </div>
+    );
   };
 
   return (
@@ -140,101 +225,102 @@ export default function MyAddressPage() {
       </div>
 
       {newAddressModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Add New Address</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const newAddress = {
-                addressLine: formData.get('address'),
-                street: formData.get('street'),
-                city: formData.get('city'),
-                state: formData.get('state'),
-                country: formData.get('country'),
-                pincode: formData.get('pincode'),
-                phone: formData.get('phone')
-              };
-              addNewAddress(newAddress);
-            }}>
-              {['address', 'street', 'city', 'state', 'country', 'pincode', 'phone'].map((field) => (
-                <div key={field} className="mb-4">
-                  <label htmlFor={field} className="block text-sm font-medium text-gray-700 mb-1 capitalize">
-                    {field}
-                  </label>
-                  <input
-                    type="text"
-                    id={field}
-                    name={field}
-                    required
-                    className="mt-1 block w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <h2 className="text-xl font-bold mb-4">Add New Address</h2>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const newAddress = {
+                  addressLine: formData.get('address'),
+                  street: formData.get('street'),
+                  city: formData.get('city'),
+                  state: formData.get('state'),
+                  country: formData.get('country'),
+                  pincode: formData.get('pincode'),
+                  phone: formData.get('phone')
+                };
+                addNewAddress(newAddress);
+              }}>
+                {renderFormField('addressLine')}
+                {renderFormField('street')}
+                {renderFormField('city')}
+                {renderFormField('state')}
+                {renderFormField('country')}
+                {renderFormField('pincode')}
+                {renderFormField('phone')}
+                
+                <div className="flex justify-end space-x-2">
+                  <button 
+                    type="button"
+                    className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
+                    onClick={() => {
+                      setNewAddressModalOpen(false);
+                      setErrors({});
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
+                  >
+                    Add Address
+                  </button>
                 </div>
-              ))}
-              <div className="flex justify-end space-x-2">
-                <button 
-                  type="button"
-                  className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
-                  onClick={() => setNewAddressModalOpen(false)}
-                >Cancel</button>
-                <button 
-                  type="submit"
-                  className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
-                >Add Address</button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {editModalOpen && currentAddress && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Edit Address</h2>
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              const formData = new FormData(e.target);
-              const editedAddress = {
-                addressLine: formData.get('address'),
-                street: formData.get('street'),
-                city: formData.get('city'),
-                state: formData.get('state'),
-                country: formData.get('country'),
-                pincode: formData.get('pincode'),
-                phone: formData.get('phone')
-              };
-              saveAddress(editedAddress);
-            }}>
-              {['address', 'street', 'city', 'state', 'country', 'pincode', 'phone'].map((field) => (
-                <div key={field} className="mb-4">
-                  <label htmlFor={`edit-${field}`} className="block text-sm font-medium text-gray-700 mb-1 capitalize">
-                    {field}
-                  </label>
-                  <input
-                    type="text"
-                    id={`edit-${field}`}
-                    name={field}
-                    defaultValue={field === 'address' ? currentAddress.addressLine : currentAddress[field]}
-                    required
-                    className="mt-1 block w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
+{editModalOpen && currentAddress && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full">
+              <h2 className="text-xl font-bold mb-4">Edit Address</h2>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const formData = new FormData(e.target);
+                const editedAddress = {
+                  addressLine: formData.get('address'),
+                  street: formData.get('street'),
+                  city: formData.get('city'),
+                  state: formData.get('state'),
+                  country: formData.get('country'),
+                  pincode: formData.get('pincode'),
+                  phone: formData.get('phone')
+                };
+                saveAddress(editedAddress);
+              }}>
+                {renderFormField('addressLine', currentAddress.addressLine, true)}
+                {renderFormField('street', currentAddress.street, true)}
+                {renderFormField('city', currentAddress.city, true)}
+                {renderFormField('state', currentAddress.state, true)}
+                {renderFormField('country', currentAddress.country, true)}
+                {renderFormField('pincode', currentAddress.pincode, true)}
+                {renderFormField('phone', currentAddress.phone, true)}
+                
+                <div className="flex justify-end space-x-2">
+                  <button 
+                    type="button"
+                    className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
+                    onClick={() => {
+                      setEditModalOpen(false);
+                      setErrors({});
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
+                  >
+                    Save Changes
+                  </button>
                 </div>
-              ))}
-              <div className="flex justify-end space-x-2">
-                <button 
-                  type="button"
-                  className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
-                  onClick={() => setEditModalOpen(false)}
-                >Cancel</button>
-                <button 
-                  type="submit"
-                  className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
-                >Save Changes</button>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
       {deleteModalOpen && currentAddress && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
