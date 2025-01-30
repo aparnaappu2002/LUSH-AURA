@@ -43,12 +43,57 @@ const Checkout = () => {
   const user = useSelector((state) => state.user.user);
   const userId = user.id || user._id;
 
+  const [formData, setFormData] = useState({
+    address: '',
+    street: '',
+    city: '',
+    state: '',
+    country: '',
+    pincode: '',
+    phone: ''
+  });
+
+  const [formErrors, setFormErrors] = useState({});
+
+  const validateField = (name, value) => {
+    switch (name) {
+      case 'address':
+        return value.length < 5 ? 'Address must be at least 5 characters long' : '';
+      case 'street':
+        return value.length < 3 ? 'Street must be at least 3 characters long' : '';
+      case 'city':
+        return !/^[a-zA-Z\s]{2,}$/.test(value) ? 'City must contain only letters and spaces' : '';
+      case 'state':
+        return !/^[a-zA-Z\s]{2,}$/.test(value) ? 'State must contain only letters and spaces' : '';
+      case 'country':
+        return !/^[a-zA-Z\s]{2,}$/.test(value) ? 'Country must contain only letters and spaces' : '';
+      case 'pincode':
+        return !/^\d{6}$/.test(value) ? 'Pincode must be exactly 6 digits' : '';
+      case 'phone':
+        return !/^[6-9]\d{9}$/.test(value) ? 'Please enter a valid 10-digit Indian mobile number' : '';
+      default:
+        return '';
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear error when user starts typing
+    if (formErrors[name]) {
+      setFormErrors(prev => ({ ...prev, [name]: '' }));
+    }
+  };
+
+  
+
   const fetchOrderHistory = useCallback(async () => {
     if (!userId) return;
 
     try {
       const { data } = await axios.get(`/orders/${userId}`);
-      console.log("Received data:", data);
+      //console.log("Received data:", data);
       setIsFirstOrder(data.length === 0);
     } catch (error) {
       console.error("Error fetching order history:", error);
@@ -118,7 +163,7 @@ const Checkout = () => {
   const fetchAvailableCoupons = async () => {
     try {
       const response = await axios.get("/coupons");
-      console.log("Fetched Coupons:", response.data);
+      //console.log("Fetched Coupons:", response.data);
 
       if (!Array.isArray(response.data)) {
         console.error("Unexpected coupons data structure:", response.data);
@@ -126,22 +171,22 @@ const Checkout = () => {
         return;
       }
 
-      console.log("Total Price:", totalPrice, "Is First Order:", isFirstOrder);
+      //console.log("Total Price:", totalPrice, "Is First Order:", isFirstOrder);
 
       const filteredCoupons = response.data.filter((coupon) => {
         const isEligible =
           totalPrice >= coupon.minPurchaseAmount &&
           (isFirstOrder || coupon.code !== "LUSHNEW");
 
-        console.log(
-          `Coupon: ${coupon.code}, Min Purchase: ${coupon.minPurchaseAmount}, Eligible: ${isEligible}`
-        );
+        // console.log(
+        //   `Coupon: ${coupon.code}, Min Purchase: ${coupon.minPurchaseAmount}, Eligible: ${isEligible}`
+        // );
 
         return isEligible;
       });
 
       setAvailableCoupons(filteredCoupons);
-      console.log("Filtered Coupons:", filteredCoupons);
+      //console.log("Filtered Coupons:", filteredCoupons);
     } catch (error) {
       console.error("Error fetching available coupons:", error);
       toast.error("Failed to fetch available coupons. Please try again.");
@@ -185,7 +230,7 @@ const Checkout = () => {
         };
       });
 
-      console.log("Product data for offer fetch:", productData);
+     // console.log("Product data for offer fetch:", productData);
 
       const productIds = productData.map((p) => p.productId).filter(Boolean);
       const queryString = productIds.join(",");
@@ -193,10 +238,10 @@ const Checkout = () => {
       const response = await axios.get(
         `/offers/products?productIds=${queryString}`
       );
-      console.log("Offer response:", response.data);
+      //console.log("Offer response:", response.data);
 
       if (response.data.success && response.data.productOffers) {
-        console.log("Setting product offers:", response.data.productOffers);
+       // console.log("Setting product offers:", response.data.productOffers);
         setProductOffers(response.data.productOffers);
 
         // Update items with best offer prices
@@ -222,14 +267,14 @@ const Checkout = () => {
             const discountedPrice =
               basePrice * (1 - offer.discountPercentage / 100);
 
-            console.log("Applying best offer:", {
-              productId,
-              basePrice,
-              variancePrice,
-              discountedPrice,
-              discountPercentage: offer.discountPercentage,
-              offerName: offer.offerName,
-            });
+            // console.log("Applying best offer:", {
+            //   productId,
+            //   basePrice,
+            //   variancePrice,
+            //   discountedPrice,
+            //   discountPercentage: offer.discountPercentage,
+            //   offerName: offer.offerName,
+            // });
 
             return {
               ...item,
@@ -272,7 +317,7 @@ const Checkout = () => {
         );
 
         if (pricesChanged) {
-          console.log("Updating items with new prices:", updatedItems);
+          //console.log("Updating items with new prices:", updatedItems);
           setItems(updatedItems);
 
           // Recalculate total price with applied offers
@@ -280,7 +325,7 @@ const Checkout = () => {
             (sum, item) => sum + item.subtotal,
             0
           );
-          console.log("New total price with offers:", newTotalPrice);
+          //console.log("New total price with offers:", newTotalPrice);
           setTotalPrice(newTotalPrice);
         }
       }
@@ -1101,83 +1146,117 @@ const Checkout = () => {
       </motion.div>
 
       {newAddressModalOpen && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+    >
+      <motion.div
+        initial={{ y: -50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: -50, opacity: 0 }}
+        className="bg-white rounded-lg p-6 max-w-md w-full"
+      >
+        <h2 className="text-2xl font-bold mb-4">Add New Address</h2>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            
+            // Validate all fields
+            const newErrors = {};
+            Object.keys(formData).forEach(field => {
+              const error = validateField(field, formData[field]);
+              if (error) newErrors[field] = error;
+            });
+
+            if (Object.keys(newErrors).length > 0) {
+              setFormErrors(newErrors);
+              toast.error('Please fix the errors in the form');
+              return;
+            }
+
+            addNewAddress(formData);
+            setNewAddressModalOpen(false);
+            // Reset form data and errors
+            setFormData({
+              address: '',
+              street: '',
+              city: '',
+              state: '',
+              country: '',
+              pincode: '',
+              phone: ''
+            });
+            setFormErrors({});
+          }}
         >
-          <motion.div
-            initial={{ y: -50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -50, opacity: 0 }}
-            className="bg-white rounded-lg p-6 max-w-md w-full"
-          >
-            <h2 className="text-2xl font-bold mb-4">Add New Address</h2>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                const formData = new FormData(e.target);
-                const newAddress = {
-                  addressLine: formData.get("address"),
-                  street: formData.get("street"),
-                  city: formData.get("city"),
-                  state: formData.get("state"),
-                  country: formData.get("country"),
-                  pincode: formData.get("pincode"),
-                  phone: formData.get("phone"),
-                };
-                addNewAddress(newAddress);
+          {[
+            { name: 'address', label: 'Address Line' },
+            { name: 'street', label: 'Street' },
+            { name: 'city', label: 'City' },
+            { name: 'state', label: 'State' },
+            { name: 'country', label: 'Country' },
+            { name: 'pincode', label: 'Pincode' },
+            { name: 'phone', label: 'Phone Number' }
+          ].map(({ name, label }) => (
+            <div key={name} className="mb-4">
+              <label
+                htmlFor={name}
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                {label}
+              </label>
+              <input
+                type="text"
+                id={name}
+                name={name}
+                value={formData[name]}
+                onChange={handleInputChange}
+                className={`mt-1 block w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-pink-500 ${
+                  formErrors[name] ? 'border-red-500' : 'border-gray-300'
+                }`}
+              />
+              {formErrors[name] && (
+                <p className="mt-1 text-sm text-red-500">{formErrors[name]}</p>
+              )}
+            </div>
+          ))}
+          <div className="flex justify-end space-x-2">
+            <motion.button
+              type="button"
+              className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
+              onClick={() => {
+                setNewAddressModalOpen(false);
+                setFormData({
+                  address: '',
+                  street: '',
+                  city: '',
+                  state: '',
+                  country: '',
+                  pincode: '',
+                  phone: ''
+                });
+                setFormErrors({});
               }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
             >
-              {[
-                "address",
-                "street",
-                "city",
-                "state",
-                "country",
-                "pincode",
-                "phone",
-              ].map((field) => (
-                <div key={field} className="mb-4">
-                  <label
-                    htmlFor={field}
-                    className="block text-sm font-medium text-gray-700 mb-1 capitalize"
-                  >
-                    {field}
-                  </label>
-                  <input
-                    type="text"
-                    id={field}
-                    name={field}
-                    required
-                    className="mt-1 block w-full border rounded-md py-2 px-3 focus:outline-none focus:ring-2 focus:ring-pink-500"
-                  />
-                </div>
-              ))}
-              <div className="flex justify-end space-x-2">
-                <motion.button
-                  type="button"
-                  className="px-4 py-2 text-sm text-gray-700 bg-white border rounded-md"
-                  onClick={() => setNewAddressModalOpen(false)}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Cancel
-                </motion.button>
-                <motion.button
-                  type="submit"
-                  className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  Add Address
-                </motion.button>
-              </div>
-            </form>
-          </motion.div>
-        </motion.div>
-      )}
+              Cancel
+            </motion.button>
+            <motion.button
+              type="submit"
+              className="px-4 py-2 text-sm text-white bg-pink-600 rounded-md"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Add Address
+            </motion.button>
+          </div>
+        </form>
+      </motion.div>
+    </motion.div>
+  )}
       <Toaster position="top-right" />
     </>
   );
