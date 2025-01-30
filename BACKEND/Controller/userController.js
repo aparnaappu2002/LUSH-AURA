@@ -395,6 +395,11 @@ const login = async (req, res) => {
             return res.status(400).json({ message: "User is blocked by admin" });
         }
 
+        if (user.isAdmin) {
+            return res.status(403).json({ message: "Admins are not allowed to log in from this portal" });
+        }
+
+
         let token, refreshToken;
         
         if (!user.googleId) {
