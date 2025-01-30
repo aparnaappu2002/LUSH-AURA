@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { FaSearch, FaUserCircle } from 'react-icons/fa';
 import { Loader2, AlertCircle } from 'lucide-react';
 import axios from '../../axios/adminAxios'
+import { useDispatch } from 'react-redux';
 
 const ConfirmationModal = ({ isOpen, onClose, onConfirm, action, userName }) => {
   if (!isOpen) return null;
+  const dispatch = useDispatch();
+
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -82,6 +85,11 @@ const UsersList = () => {
       const response = await axios.patch(`/useredit/${selectedUser._id}`, { status: userStatus });
       console.log(response.data.message);
       setUsers((prevUsers) => prevUsers.map((u) => u._id === selectedUser._id ? { ...u, status: userStatus } : u));
+      if (userStatus === 'inactive' && selectedUser._id === localStorage.getItem('userId')) {
+        dispatch(removeUser());
+        localStorage.removeItem('userId'); // Optional: Remove userId from local storage
+      }
+  
     } catch (error) {
       console.log('Error in editing the user status', error.message);
     } finally {
