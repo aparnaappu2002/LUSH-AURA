@@ -159,6 +159,9 @@ const addOrder = async (req, res) => {
   const getOrders = async (req, res) => {
     try {
       const orders = await Order.find().populate('userId shippingAddress');
+      if (!orders || orders.length === 0) {
+        return res.status(200).json([]); // Return empty array instead of error
+      }
       res.json(orders);
     } catch (err) {
       res.status(500).json({ message: "Error fetching orders", error: err });

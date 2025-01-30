@@ -241,8 +241,11 @@ const OrderListPage = () => {
 
         setOrders(sortedOrders);
       } catch (err) {
-        console.error("Error fetching orders:", err);
-        setError("Failed to fetch orders");
+        if (err.response?.status === 500) {
+          setError("An error occurred while fetching your orders. Please try again later.");
+        } else {
+          setOrders([]); // Set empty array for no orders
+        }
       } finally {
         setLoading(false);
       }
@@ -498,12 +501,38 @@ const OrderListPage = () => {
 
   if (!Array.isArray(orders) || orders.length === 0) {
     return (
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold mb-6">Your Orders</h1>
-        <div className="bg-white shadow overflow-hidden sm:rounded-md p-6">
-          <p className="text-gray-500 text-center">No orders found.</p>
+      <>
+        <Navbar />
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold mb-6">Your Orders</h1>
+          <div className="bg-white shadow rounded-lg p-6 text-center">
+            <div className="mb-4">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Orders Found</h3>
+            <p className="text-gray-500 mb-4">You haven't placed any orders yet.</p>
+            <button
+              onClick={() => navigate('/')}
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-pink-600 hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500"
+            >
+              Start Shopping
+            </button>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
