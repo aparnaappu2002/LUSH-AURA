@@ -142,7 +142,12 @@ const getCartItems = async (req, res) => {
       .populate({
         path: "items.productId",
         model: "products",
-        select: "name description price image variances",
+        select: "name description price image variances status categoryId availableQuantity",
+        populate: {
+          path: "categoryId",
+          model: "category",
+          select: "status name"
+        }
       });
 
     if (!cart) {
@@ -160,7 +165,10 @@ const getCartItems = async (req, res) => {
       return {
         ...item.toObject(),
         productName, // Use productName from item or fallback to populated product name
-        image: varianceImage || "", // Add image URL or empty string
+        image: varianceImage || "",
+        productStatus: product?.status || 'inactive',
+        categoryStatus: product?.categoryId?.status || 'inactive',
+        availableQuantity: product?.availableQuantity || 0, // Add image URL or empty string
       };
     });
 
