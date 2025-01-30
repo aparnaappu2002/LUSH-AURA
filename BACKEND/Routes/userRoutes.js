@@ -6,7 +6,7 @@ const {addAddress, showAddress, editAddress, removeAddress} = require("../Contro
 const {authToken} = require('../auth/userAuth')
 const {cartAdd, getCartItems, removeCartItem, updateCartQuantity, removeCart} = require("../Controller/cartController")
 const { addOrder, getUserOrder, cancelOrder, returnOrder, verifyPayment, failurePayment, retryPayment, invoiceDownload } = require("../Controller/orderController")
-const {showCategory} = require("../Controller/categoryController")
+const {showCategory, showCategoryStatus} = require("../Controller/categoryController")
 const { wishlistAdd, fetchWishlist, wishlistDelete, wishAdd } = require("../Controller/wishlistController")
 const { getCoupons } = require("../Controller/couponController")
 const { getWalletData } = require("../Controller/walletController")
@@ -51,8 +51,8 @@ userRoute.get('/download-invoice/:orderId',authToken,invoiceDownload)
 
 userRoute.post('/verifypayment',authToken,verifyPayment)
 
-userRoute.get('/category',showCategory)
-userRoute.get('/category',showCategory)
+userRoute.get('/categorystatus',showCategoryStatus)
+
 
 
 userRoute.post('/wishlistadd',wishlistAdd)
