@@ -6,7 +6,7 @@ import { addUser } from '../redux/Slices/userSlice';
 import axios from '../../axios/userAxios';
 import {toast,Toaster} from "react-hot-toast";
 
-import { FaCamera, FaEdit, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLock, FaHome } from 'react-icons/fa';
+import { FaCamera, FaEdit, FaUser, FaEnvelope, FaPhone, FaMapMarkerAlt, FaLock, FaHome,FaEye,FaEyeSlash } from 'react-icons/fa';
 import profileIcon from "../../assets/images/profile-icon-design-free-vector.jpg"
 import Navbar from '../shared/Navbar';
 
@@ -14,11 +14,35 @@ import Navbar from '../shared/Navbar';
 const Profile = () => {
   const user = useSelector((state) => state.user.user);
   const { id } = useParams(); 
-  console.log("User in Profile:", user);
+  //console.log("User in Profile:", user);
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const dispatch = useDispatch()
+  // const [formData, setFormData] = useState({
+  //   firstName: user?.name?.split(' ')[0] || '',
+  //   lastName: user?.name?.split(' ')[1] || '',
+  //   phone: user?.phoneNumber || '',
+  //   email: user?.email || '',
+  // });
+
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const [formErrors, setFormErrors] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+  });
+
+  const [passwordErrors, setPasswordErrors] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
   const [formData, setFormData] = useState({
     firstName: user?.name?.split(' ')[0] || '',
     lastName: user?.name?.split(' ')[1] || '',
@@ -26,12 +50,105 @@ const Profile = () => {
     email: user?.email || '',
   });
 
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  const validateProfileForm = () => {
+    let isValid = true;
+    const errors = {
+      firstName: '',
+      lastName: '',
+      phone: '',
+      email: '',
+    };
+
+    // First Name validation
+    if (!formData.firstName.trim()) {
+      errors.firstName = 'First name is required';
+      isValid = false;
+    } else if (formData.firstName.length < 2) {
+      errors.firstName = 'First name must be at least 2 characters';
+      isValid = false;
+    }
+
+    // Last Name validation
+    if (!formData.lastName.trim()) {
+      errors.lastName = 'Last name is required';
+      isValid = false;
+    } else if (formData.lastName.length < 2) {
+      errors.lastName = 'Last name must be at least 2 characters';
+      isValid = false;
+    }
+
+    // Phone validation
+    const phoneRegex = /^\+?[1-9]\d{9,11}$/;
+    if (formData.phone && !phoneRegex.test(formData.phone)) {
+      errors.phone = 'Please enter a valid phone number';
+      isValid = false;
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email) {
+      errors.email = 'Email is required';
+      isValid = false;
+    } else if (!emailRegex.test(formData.email)) {
+      errors.email = 'Please enter a valid email address';
+      isValid = false;
+    }
+
+    setFormErrors(errors);
+    return isValid;
+  };
+
+  const validatePasswordForm = () => {
+    let isValid = true;
+    const errors = {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: ''
+    };
+
+    // Current password validation
+    if (!passwordData.currentPassword) {
+      errors.currentPassword = 'Current password is required';
+      isValid = false;
+    }
+
+    // New password validation
+    if (!passwordData.newPassword) {
+      errors.newPassword = 'New password is required';
+      isValid = false;
+    } else if (passwordData.newPassword.length < 6) {
+      errors.newPassword = 'Password must be at least 6 characters';
+      isValid = false;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(passwordData.newPassword)) {
+      errors.newPassword = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
+      isValid = false;
+    }
+
+    // Confirm password validation
+    if (!passwordData.confirmPassword) {
+      errors.confirmPassword = 'Please confirm your new password';
+      isValid = false;
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      errors.confirmPassword = 'Passwords do not match';
+      isValid = false;
+    }
+
+    setPasswordErrors(errors);
+    return isValid;
+  };
+
   useEffect(() => {
     const fetchUserDetails = async () => {
 
       try {
         const response = await axios.get(`/profile/${user.id || user._id}`);
-        console.log("Response:",response)
+       // console.log("Response:",response)
         addUser(response.data.user);
         setFormData({
           firstName: response.data.firstName,
@@ -52,11 +169,11 @@ const Profile = () => {
   
 
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
+  // const [passwordData, setPasswordData] = useState({
+  //   currentPassword: '',
+  //   newPassword: '',
+  //   confirmPassword: ''
+  // });
 
   if (!user) {
     return (
@@ -91,15 +208,22 @@ const Profile = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handlePasswordChange = (e) => {
     const { name, value } = e.target;
     setPasswordData((prev) => ({ ...prev, [name]: value }));
+    // Clear error when user starts typing
+    setPasswordErrors(prev => ({ ...prev, [name]: '' }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!validateProfileForm()) {
+      return;
+    }
     console.log("form:",formData)
     try {
       const response = await axios.put(`/changeUserInfo/${user.id || user._id}`, formData);
@@ -196,62 +320,103 @@ const Profile = () => {
 
           {isChangingPassword && (
             <motion.form
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              onSubmit={handlePasswordSubmit}
-              className="mb-8 p-6 bg-gray-50 rounded-lg"
-            >
-              <h3 className="text-lg font-semibold mb-4">Change Password</h3>
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Current Password
-                  </label>
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            onSubmit={handlePasswordSubmit}
+            className="mb-8 p-6 bg-gray-50 rounded-lg"
+          >
+            <h3 className="text-lg font-semibold mb-4">Change Password</h3>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Current Password
+                </label>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showCurrentPassword ? "text" : "password"}
                     name="currentPassword"
                     value={passwordData.currentPassword}
                     onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    required
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      passwordErrors.currentPassword ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showCurrentPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    New Password
-                  </label>
+                {passwordErrors.currentPassword && (
+                  <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
+                )}
+              </div>
+      
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password
+                </label>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showNewPassword ? "text" : "password"}
                     name="newPassword"
                     value={passwordData.newPassword}
                     onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    required
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      passwordErrors.newPassword ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showNewPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Confirm New Password
-                  </label>
+                {passwordErrors.newPassword && (
+                  <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>
+                )}
+              </div>
+      
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm New Password
+                </label>
+                <div className="relative">
                   <input
-                    type="password"
+                    type={showConfirmPassword ? "text" : "password"}
                     name="confirmPassword"
                     value={passwordData.confirmPassword}
                     onChange={handlePasswordChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
-                    required
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      passwordErrors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
                 </div>
+                {passwordErrors.confirmPassword && (
+                  <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+                )}
               </div>
-              <div className="mt-4 flex justify-end">
-                <button
-                  type="submit"
-                  className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
-                >
-                  Update Password
-                </button>
-              </div>
-            </motion.form>
+            </div>
+            <div className="mt-4 flex justify-end">
+              <button
+                type="submit"
+                className="px-6 py-2 bg-pink-600 text-white rounded-lg hover:bg-pink-700"
+              >
+                Update Password
+              </button>
+            </div>
+          </motion.form>
           )}
 
           {isEditing ? (
@@ -271,8 +436,13 @@ const Profile = () => {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      formErrors.firstName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {formErrors.firstName && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.firstName}</p>
+                )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -283,8 +453,13 @@ const Profile = () => {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      formErrors.lastName ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {formErrors.lastName && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.lastName}</p>
+                )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -295,8 +470,13 @@ const Profile = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      formErrors.email ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {formErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.email}</p>
+                )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -307,8 +487,13 @@ const Profile = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent"
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent ${
+                      formErrors.phone ? 'border-red-500' : 'border-gray-300'
+                    }`}
                   />
+                  {formErrors.phone && (
+                  <p className="text-red-500 text-sm mt-1">{formErrors.phone}</p>
+                )}
                 </div>
                 
               </div>
