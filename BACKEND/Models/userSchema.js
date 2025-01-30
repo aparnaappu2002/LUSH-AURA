@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
     },
     status:{
         type:String,
-        enum:['active','inactive','blocked','unBlock'],
+        enum:['active','inactive'],
         default:'active'
     },
     googleId:{
