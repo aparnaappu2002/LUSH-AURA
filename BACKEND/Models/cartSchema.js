@@ -41,7 +41,7 @@ const cartItemSchema = new mongoose.Schema({
     },
     availableQuantity: { // Added availableQuantity field
         type: Number,
-        required: true, // You can make this required based on your business logic
+        //required: true, // You can make this required based on your business logic
         default: 0 // Default to 0 if no quantity is provided
     }
 
