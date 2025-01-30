@@ -17,6 +17,10 @@ const wishlistSchema = new mongoose.Schema({
             type: String, 
             required: true
         },
+        price: {
+          type: Number,
+          required: true
+        },
     
         variance: {
           size: {
@@ -29,9 +33,10 @@ const wishlistSchema = new mongoose.Schema({
           },
           availableQuantity: {
             type: Number,
-            required: true,
+            //required: true,
             default: 0
-          }
+          },
+          
         },
         productImage: {
           type: String,  // Assuming the image URL is stored as a string
