@@ -53,7 +53,9 @@ const CartPage = () => {
               image: imageUrl,
               quantity: item.quantity,
               variance: item.variance,
-              availableQuantity:item.availableQuantity
+              availableQuantity:item.availableQuantity,
+              productStatus: item.productId.status, // Add product status
+              categoryStatus: item.productId.categoryId?.status
             };
           })
         );
@@ -80,6 +82,17 @@ const CartPage = () => {
     
     // Check each item in the cart
     for (const item of cartItems) {
+
+      if (item.productStatus !== 'active') {
+        setValidationError(`${item.name} is currently not available for purchase`);
+        return false;
+      }
+
+      // Check category status
+      if (item.categoryStatus !== 'active') {
+        setValidationError(`${item.name} belongs to a category that is currently not available`);
+        return false;
+      }
       // Check if item is available (quantity > 0)
       if (item.availableQuantity <= 0) {
         setValidationError(`${item.name} is currently out of stock`);
