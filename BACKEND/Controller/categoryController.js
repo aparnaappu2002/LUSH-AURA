@@ -3,7 +3,7 @@ const Category = require('../Models/categorySchema');
 // Add Category
 const addCategory = async (req, res) => {
   const { newCategory } = req.body;
-  console.log("Data:", req.body)
+  //console.log("Data:", req.body)
 
   try {
     // Check if newCategory is defined
@@ -11,9 +11,14 @@ const addCategory = async (req, res) => {
       return res.status(400).json({ message: "Category name is required" });
     }
 
-    const exists = await Category.findOne({ categoryName: newCategory });
+    const exists = await Category.findOne({
+      categoryName: { $regex: new RegExp(`^${newCategory}$`, 'i') }
+    });
+    
     if (exists) {
-      return res.status(400).json({ message: "This category already exists" });
+      return res.status(409).json({ 
+        message: "This category already exists" 
+      });
     }
     console.log("exist:",exists)
 
@@ -35,6 +40,16 @@ const addCategory = async (req, res) => {
 const showCategory = async (req, res) => {
   try {
     const categories = await Category.find();
+    console.log(categories)
+    return res.status(200).json({ message: "Categories fetched successfully", categories });
+  } catch (error) {
+    console.error('Error in fetching categories:', error);
+    return res.status(400).json({ message: "Error in fetching categories" });
+  }
+};
+const showCategoryStatus = async (req, res) => {
+  try {
+    const categories = await Category.find({ status: 'active' });
     console.log(categories)
     return res.status(200).json({ message: "Categories fetched successfully", categories });
   } catch (error) {
@@ -100,4 +115,5 @@ module.exports = {
   editStatus,
   editCategory,
   deleteCategory,
+  showCategoryStatus
 };

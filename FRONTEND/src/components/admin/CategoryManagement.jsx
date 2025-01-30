@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from '../../axios/adminAxios';
-import { PlusIcon, PencilIcon } from 'lucide-react';
+import { PlusIcon, PencilIcon, XIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Toaster } from 'react-hot-toast';
 
@@ -48,9 +48,11 @@ export default function CategoryManagement() {
         setNewCategory({ name: '', status: true });
       } catch (error) {
         console.error('Error adding category:', error);
-        toast.error(
-          error.response?.data?.message || 'Failed to add category'
-        );
+        if (error.response?.status === 409) {
+          toast.error(error.response.data.message);
+        } else {
+          toast.error(error.response?.data?.message || 'Failed to add category');
+        }
       }
     } else {
       toast.error('Category name cannot be empty');
@@ -83,6 +85,13 @@ export default function CategoryManagement() {
   const handleEditCategory = async (e) => {
     e.preventDefault()
     try {
+
+      const existingCategory = categories.find(cat => cat._id === selectedId);
+      if (existingCategory?.categoryName.toLowerCase() === editNameCategory.toLowerCase()) {
+        toast.error("The new name is the same as the current name");
+        return;
+      }
+
       const response = await axios.patch(`/editcategory/${selectedId}`, {
         editNameCategory,
       });
@@ -90,8 +99,8 @@ export default function CategoryManagement() {
       setIsModalOpen(false);
       toast.success(response.data.message);
     } catch (error) {
-      if (error.response && error.response.status === 409) {
-        toast.error(error.response.data.message); // Show the error message from the server
+      if (error.response?.status === 409) {
+        toast.error(error.response.data.message);// Show the error message from the server
       } else {
         console.error('Error editing category:', error);
         toast.error('Failed to edit category'); // Show a generic error message
@@ -242,7 +251,13 @@ export default function CategoryManagement() {
       {/* Edit Modal */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center">
-          <div className="bg-white p-8 rounded-lg shadow-lg">
+          <div className="bg-white p-8 rounded-lg shadow-lg relative">
+          <button
+        onClick={() => setIsModalOpen(false)}
+        className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 transition-colors"
+      >
+        <XIcon className="w-6 h-6" />
+      </button>
             <h2 className="text-xl font-bold mb-4">Edit Category</h2>
             <form onSubmit={handleEditCategory}>
               <input
