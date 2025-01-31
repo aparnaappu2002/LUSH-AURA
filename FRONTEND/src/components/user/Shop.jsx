@@ -37,7 +37,7 @@ const ProductCard = ({ product }) => {
           alt={product.name}
           className="w-full h-48 object-cover"
         />
-        <button
+        {/* <button
           onClick={(e) => {
             e.stopPropagation();
             toggleLike();
@@ -47,7 +47,7 @@ const ProductCard = ({ product }) => {
           } hover:bg-red-600 hover:text-white transition-colors duration-300`}
         >
           <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
-        </button>
+        </button> */}
       </div>
 
       <div className="p-4 flex-grow flex flex-col justify-between">

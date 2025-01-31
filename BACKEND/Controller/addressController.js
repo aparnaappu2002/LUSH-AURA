@@ -4,7 +4,8 @@ const User = require('../Models/userSchema')
 
 const addAddress = async (req, res) => {
     try {
-      const {userId, addressLine, street, city, state, country, pincode,phone } = req.body;
+      const {userId, address: addressLine, street, city, state, country, pincode,phone } = req.body;
+      console.log("Body",req.body)
   
       if (!addressLine || !street || !city || !state || !country || !pincode) {
         return res.status(400).json({ message: 'All fields are required' });

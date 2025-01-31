@@ -225,7 +225,7 @@ export default function MyAddressPage() {
       </div>
 
       {newAddressModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
               <h2 className="text-xl font-bold mb-4">Add New Address</h2>
               <form onSubmit={(e) => {
@@ -274,7 +274,7 @@ export default function MyAddressPage() {
         )}
 
 {editModalOpen && currentAddress && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full">
               <h2 className="text-xl font-bold mb-4">Edit Address</h2>
               <form onSubmit={(e) => {
@@ -323,7 +323,7 @@ export default function MyAddressPage() {
         )}
 
       {deleteModalOpen && currentAddress && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-sm w-full">
             <h2 className="text-xl font-bold mb-4">Confirm Deletion</h2>
             <p className="mb-4">Are you sure you want to delete this address? This action cannot be undone.</p>
