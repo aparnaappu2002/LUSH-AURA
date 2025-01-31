@@ -158,19 +158,26 @@ const getCartItems = async (req, res) => {
     const itemsWithDetails = cart.items.map((item) => {
       const product = item.productId; // Populated product data
       const productName = item.productName || product?.name || "Unknown Product";
+      
+      // If variance exists, use its quantity, else fallback to 0
+      const varianceQuantity = item.variance?.quantity || 0;
+      
+      // Get availableQuantity from the cart item directly
+      const availableQuantity = item.availableQuantity || 0;
 
-      const varianceImage = item.variance.varianceImage?.[0] || "";
-
+      const varianceImage = item.variance?.varianceImage?.[0] || "";
 
       return {
         ...item.toObject(),
         productName, // Use productName from item or fallback to populated product name
-        image: varianceImage || "",
+        image: varianceImage || "", // Use the variance image if it exists
         productStatus: product?.status || 'inactive',
         categoryStatus: product?.categoryId?.status || 'inactive',
-        availableQuantity: product?.availableQuantity || 0, // Add image URL or empty string
+        availableQuantity, // Use availableQuantity from the cart item itself
+        varianceQuantity,  // Use varianceQuantity if needed
       };
     });
+
 
     res.status(200).json({
       message: "Cart retrieved successfully",

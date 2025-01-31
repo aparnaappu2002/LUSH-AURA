@@ -39,7 +39,7 @@ const CartPage = () => {
       const response = await axios.get(`/cart/${userId}`); // Fetch cart items from the server
       const cartData = response.data.cart;
   
-     // console.log("CartData:", cartData);
+      console.log("CartData:", cartData);
   
       if (cartData && Array.isArray(cartData.items)) {
         setCartItems(
@@ -93,8 +93,9 @@ const CartPage = () => {
         setValidationError(`${item.name} belongs to a category that is currently not available`);
         return false;
       }
+      
       // Check if item is available (quantity > 0)
-      if (item.availableQuantity <= 0) {
+      if (item.availableQuantity === null || item.availableQuantity <= 0) {
         setValidationError(`${item.name} is currently out of stock`);
         return false;
       }
