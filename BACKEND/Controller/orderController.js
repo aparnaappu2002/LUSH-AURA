@@ -25,7 +25,7 @@ const razorpay = new Razorpay({
 
 const addOrder = async (req, res) => {
   try {
-    const { userId, items, shippingAddress, paymentMethod, totalItems, totalPrice,shippingCharge  } = req.body;
+    const { userId, items, shippingAddress, paymentMethod, totalItems, totalPrice,shippingCharge,couponDiscount   } = req.body;
 
     // Validate input
     if (!userId || !items || !shippingAddress || !paymentMethod || !totalItems || !totalPrice) {
@@ -89,7 +89,8 @@ const addOrder = async (req, res) => {
       await product.save();
     }
 
-    const finalPrice = totalPrice + shippingCharge;
+    const discountAmount = couponDiscount || 0;
+    const finalPrice = Math.max(totalPrice - discountAmount, 0) + shippingCharge;
 
     // Create the order
     const newOrder = new Order({
@@ -102,6 +103,7 @@ const addOrder = async (req, res) => {
       totalItems,
       totalPrice:finalPrice,
       shippingCharge,
+      couponDiscount: discountAmount,
     });
 
     let razorpayOrder = null;
@@ -272,8 +274,20 @@ const cancelOrder = async (req, res) => {
     }
 
     const cancelledItem = order.items[itemIndex];
-    console.log("Cancel",cancelledItem)
-    const refundAmount = cancelledItem.subtotal;
+    //console.log("Cancel",cancelledItem)
+    if (order.couponDiscount > 0) {
+      // Calculate total order amount without coupon
+      const totalWithoutCoupon = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+      
+      // Calculate this item's contribution proportion
+      const itemContribution = cancelledItem.subtotal;
+      const couponDiscountProportion = (itemContribution / totalWithoutCoupon) * order.couponDiscount;
+      
+      // Calculate final refund amount
+      refundAmount = Math.round((itemContribution - couponDiscountProportion) * 100) / 100;
+    } else {
+      refundAmount = cancelledItem.subtotal;
+    }
 
     // Handle refund to wallet if payment is completed
     if (order.paymentStatus === 'Completed') {
@@ -450,11 +464,22 @@ const acceptReturnRequest = async (req, res) => {
       return res.status(400).json({ message: `Return request already ${order.returnRequest.status}.` });
     }
 
+    const totalWithoutCoupon = order.items.reduce((sum, item) => sum + item.subtotal, 0);
+
     // Calculate the total refund amount
     let refundAmount = 0;
     for (const item of order.items) {
       if (item.productStatus === "Return Requested") {
-        refundAmount += item.subtotal;
+        let itemRefundAmount;
+        if (order.couponDiscount > 0) {
+          const itemContribution = item.subtotal;
+          const couponDiscountProportion = (itemContribution / totalWithoutCoupon) * order.couponDiscount;
+          itemRefundAmount = Math.round((itemContribution - couponDiscountProportion) * 100) / 100;
+        } else {
+          itemRefundAmount = item.subtotal;
+        }
+
+        refundAmount += itemRefundAmount;
         item.productStatus = "Returned";
 
         // Find and update the product variance quantity

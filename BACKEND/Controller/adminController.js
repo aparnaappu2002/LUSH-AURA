@@ -40,6 +40,8 @@ const login = async (req, res) => {
             httpOnly: true, // Prevent client-side JavaScript from accessing the cookie
             secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            sameSite: 'strict',  // Add this
+            path: '/',           
         });
 
         // Respond with the access token and user details
@@ -61,7 +63,7 @@ const login = async (req, res) => {
 
 const fetchUser = async (req, res) => {
     try {
-      const users = await User.find();
+      const users = await User.find({ isAdmin: false });
       console.log(users);
       res.status(200).json({ message: 'Users fetched', users });
     } catch (error) {

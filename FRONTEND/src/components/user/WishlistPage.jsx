@@ -55,6 +55,7 @@ const WishlistPage = () => {
       toast.error("This product is currently out of stock");
       return;
     }
+    console.log(item.variance.availableQuantity)
 
     // Check if requested quantity exceeds available stock
     const requestedQuantity = item.quantity || 1;

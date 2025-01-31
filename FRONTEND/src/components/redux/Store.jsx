@@ -34,7 +34,7 @@ const rootReducer = combineReducers({
 const persistConfig = {
   key: 'root', // Key for localStorage
   storage, // Use localStorage as the default storage
-  whitelist: ['user', 'product'], // State slices you want to persist
+  whitelist: ['user', 'product', 'token'], // State slices you want to persist
 };
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

@@ -38,11 +38,11 @@ const productSchema = new mongoose.Schema({
         type:Number,
         required:true
     },
-    availableQuantity:{
-        type:Number, 
-        required:true,
-        default:0
-    },
+    // availableQuantity:{
+    //     type:Number, 
+    //     required:true,
+    //     default:0
+    // },
     description:{
         type:String,
         required:true

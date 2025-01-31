@@ -491,7 +491,7 @@ const Checkout = () => {
     }
   
     setIsLoading(true);
-  
+    const finalPrice = totalPrice + shippingCharge;
     try {
       const orderDetails = {
         userId,
@@ -499,13 +499,15 @@ const Checkout = () => {
         shippingAddress: selectedAddress,
         paymentMethod,
         totalItems,
-        totalPrice,
+        totalPrice:finalPrice,
         shippingCharge: 50,
         appliedCoupon: appliedCoupon ? appliedCoupon.code : null,
+        couponDiscount: discountAmount
       };
   
       const response = await axios.post("/addOrder", orderDetails);
       const { order, razorpayOrder } = response.data;
+      console.log(response.data)
   
       if (paymentMethod === "UPI" && razorpayOrder) {
         const razorpayOptions = {
@@ -767,7 +769,7 @@ const Checkout = () => {
                 <label className="block text-lg font-medium text-gray-700 mb-3">
                   Select Payment Method
                 </label>
-                {["UPI", "Wallet", "Cash on Delivery"].map((method) => (
+                {["UPI",  "Cash on Delivery"].map((method) => (
         <motion.div
           key={method}
           whileHover={{ scale: 1.02 }}

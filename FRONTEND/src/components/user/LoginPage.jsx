@@ -74,6 +74,10 @@ const LoginPage = () => {
       setIsLoading(false);
     }
   };
+  const handleForgotPassword = (e) => {
+    e.preventDefault();
+    navigate('/forgotpassword');
+  };
 
   const handleGoogleLogin = async (credentialResponse) => {
     if (credentialResponse?.credential) {
@@ -155,11 +159,7 @@ const LoginPage = () => {
             <div className="text-sm">
               <a 
                 href="#" 
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate('/forgotpassword')
-                  
-                }} 
+                onClick={handleForgotPassword}
                 className="font-medium text-pink-600 hover:text-pink-500"
               >
                 {isForgotPasswordLoading ? 'Sending...' : 'Forgot your password?'}

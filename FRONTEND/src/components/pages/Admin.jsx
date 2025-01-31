@@ -24,10 +24,12 @@ import OfferPage from "../admin/OfferPage";
 import SalesReport from "../admin/SalesReport";
 import BestSellers from "../admin/BestSellers";
 
+
 function Admin() {
   return (
       <Routes>
         <Route path="/adminlogin" element={<AdminLogin />} />
+       
         <Route element={<LayoutWrapper/>}>
         <Route path="/dashboard" element={<ProtectRoute> <DashboardLayout /> </ProtectRoute> } />
         <Route path="/users" element={<ProtectRoute><UsersList /> </ProtectRoute>} />

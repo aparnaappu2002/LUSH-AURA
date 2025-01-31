@@ -27,7 +27,7 @@ const ProductDetails = () => {
   const { id: productId } = useParams();
   const navigate = useNavigate();
   const user = useSelector((state) => state.user.user);
-  console.log("User:",user)
+  //console.log("User:",user)
   const userId= user.id || user._id
 
   const calculateDiscount = () => {
@@ -40,7 +40,7 @@ const ProductDetails = () => {
   
     const discountAmount = (basePrice * maxDiscount) / 100;
     const newDiscountedPrice = basePrice - discountAmount;
-    console.log("Discount:", newDiscountedPrice);
+    //console.log("Discount:", newDiscountedPrice);
   
     setDiscountedPrice(newDiscountedPrice);
     setDiscount(maxDiscount);
@@ -54,11 +54,11 @@ const ProductDetails = () => {
 
   useEffect(() => {
     if (product && selectedVariance) {
-      console.log('Product data:', {
-        basePrice: selectedVariance ? selectedVariance.price : product.price,
-        offer: product.offer,
-        category: product.category
-      });
+      // console.log('Product data:', {
+      //   basePrice: selectedVariance ? selectedVariance.price : product.price,
+      //   offer: product.offer,
+      //   category: product.category
+      // });
       calculateDiscount();
     }
   }, [product, selectedVariance, calculateDiscount]);
@@ -66,7 +66,7 @@ const ProductDetails = () => {
   const fetchProductDetails = async () => {
     try {
       const response = await axios.get(`/productdetails/${productId}`);
-      console.log("Product details fetched:", response);
+      //console.log("Product details fetched:", response);
 
       if (response.status === 200 && response.data) {
         // Set the entire product data
@@ -170,23 +170,32 @@ const ProductDetails = () => {
       } else {
         console.log("No wishlist found for the user. Proceeding to add the product.");
       }
+
+    const basePrice = selectedVariance ? selectedVariance.price : product.price;
+    let finalPrice = basePrice;
+    
+    if (product.bestOffer) {
+      const discountAmount = (basePrice * product.bestOffer.discountPercentage) / 100;
+      finalPrice = basePrice - discountAmount;
+    }
   
       // Add the product to the wishlist
       const wishlistPayload = {
         userId: userId,
         productId: product._id,
         productName: product.title,
-        price: selectedVariance ? selectedVariance.price : product.price,
+        price: finalPrice,
         image: selectedVariance?.varianceImage?.[0] || product.productImage?.[0] || "",
         variance: selectedVariance
           ? {
-              size: selectedVariance.size || undefined,
-              color: selectedVariance.color || undefined,
+              size: selectedVariance.size ,
+              color: selectedVariance.color  ,
+              availableQuantity: selectedVariance.quantity || 0,
             }
           : null,
       };
   
-      console.log("Wishlist data:", wishlistPayload);
+      //console.log("Wishlist data:", wishlistPayload);
   
       const addResponse = await axios.post("/wishlistadd", wishlistPayload);
       if (addResponse.status === 200) {
@@ -197,21 +206,28 @@ const ProductDetails = () => {
       // Handle cases where no wishlist exists or any other errors
       if (error.response && error.response.status === 404) {
         console.log("No wishlist exists for the user. Proceeding to create a new one.");
+        const basePrice = selectedVariance ? selectedVariance.price : product.price;
+      let finalPrice = basePrice;
+      
+      if (product.bestOffer) {
+        const discountAmount = (basePrice * product.bestOffer.discountPercentage) / 100;
+        finalPrice = basePrice - discountAmount;
+      }
         const wishlistPayload = {
           userId: userId,
           productId: product._id,
           productName: product.title,
-          price: selectedVariance ? selectedVariance.price : product.price,
+          price: finalPrice,
           image: selectedVariance?.varianceImage?.[0] || product.productImage?.[0] || "",
           variance: selectedVariance
             ? {
-                size: selectedVariance.size || undefined,
-                color: selectedVariance.color || undefined,
+                size: selectedVariance.size ,
+                color: selectedVariance.color,
               }
             : null,
         };
   
-        console.log("Wishlist data (new):", wishlistPayload);
+        //console.log("Wishlist data (new):", wishlistPayload);
   
         const addResponse = await axios.post("/wishlistadd", wishlistPayload);
         if (addResponse.status === 200) {

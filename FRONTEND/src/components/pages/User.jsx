@@ -19,6 +19,8 @@ import WishlistPage from "../user/WishlistPage"
 import WalletPage from "../account/WalletPage"
 import AboutUs from "../user/About"
 import ContactUs from "../user/Contact"
+import ProtectedRouteUser from "../../protectroute/ProtectRouteUser"
+
 function User()
 {
     return(
@@ -31,23 +33,24 @@ function User()
             <Route path="/login" element={<LoginPage/>}/>
             <Route path="/otpverification" element={<OTPVerification/>}/>
            
-            <Route path="/shop" element={<Shop/>}/>
-            <Route path="/productdetails/:id" element={<ProductDetails/>}/>
+            <Route path="/shop" element={ <ProtectedRouteUser><Shop/></ProtectedRouteUser> }/>
+            <Route path="/productdetails/:id" element={<ProtectedRouteUser><ProductDetails/></ProtectedRouteUser>  }/>
             <Route path="/forgotpassword" element={<ForgotPassword/>}/>
-            <Route path="/resetpassword/:token" element={<ResetPassword/>}/>
-            <Route path="/cart" element={<CartPage/>}/>
-            <Route path="/checkout" element={<Checkout/>}/>
+            <Route path="/resetpassword/:token" element={<ResetPassword/>  }/>
+            <Route path="/cart" element={<ProtectedRouteUser><CartPage/></ProtectedRouteUser>  }/>
+            <Route path="/checkout" element={<ProtectedRouteUser><Checkout/></ProtectedRouteUser>}/>
             <Route path="/about" element={<AboutUs/>}/> 
-            <Route path="/contact" element={<ContactUs/>}/> 
+            <Route path="/contact" element={<ContactUs/>}/>
+           
             
 
             
             <Route element={<Layout/>}>
-            <Route path="/profile" element={<Profile/>}/>
-            <Route path="/address" element={<MyAddressPage/>}/>
-             <Route path="/orderlist" element={<OrderListPage/>}/> 
-             <Route path="/wishlist" element={<WishlistPage/>}/> 
-             <Route path="/wallet" element={<WalletPage/>}/> 
+            <Route path="/profile" element={<ProtectedRouteUser><Profile/></ProtectedRouteUser>  }/>
+            <Route path="/address" element={<ProtectedRouteUser><MyAddressPage/></ProtectedRouteUser> }/>
+             <Route path="/orderlist" element={<ProtectedRouteUser><OrderListPage/></ProtectedRouteUser>  }/> 
+             <Route path="/wishlist" element={<ProtectedRouteUser><WishlistPage/></ProtectedRouteUser> }/> 
+             <Route path="/wallet" element={<ProtectedRouteUser><WalletPage/></ProtectedRouteUser> }/> 
              
             </Route>
             

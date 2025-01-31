@@ -41,7 +41,7 @@ const orderItemSchema = new mongoose.Schema({
     },
     productStatus:{
         type: String,
-        enum: ["Placed", "Processing", "Shipped", "Delivered", "Cancelled","Returned","Return Requested","Return Failed"],
+        enum: ["Placed", "Processing", "Shipped", "Delivered", "Cancelled","Returned","Return Requested","Return Failed","active"],
         default: "Placed"
     }
 });
@@ -90,6 +90,11 @@ const orderSchema = new mongoose.Schema({
         type: Number,
         default:50,
         required:false
+    },
+    couponDiscount: {
+        type: Number,
+        default: 0,
+        required: false
     },
     
 
